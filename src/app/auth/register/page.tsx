@@ -18,11 +18,11 @@ export default function RegisterPage() {
     const formData = new FormData(e.currentTarget);
 
     startTransition(async () => {
-      const res = await registerAction(formData);
-      if (res?.message) setMessage(res.message);
-      if (res?.error) {
-        setError(res.error);
-      }
+      try {
+        const res = await registerAction(formData);
+        if (res?.message) setMessage(res.message);
+        if (res?.error) setError(res.error);
+      } catch { setError('Nepavyko susisiekti su paslauga. Bandykite dar kartą.'); }
     });
   };
 
@@ -30,13 +30,13 @@ export default function RegisterPage() {
     <div className="max-w-md mx-auto my-12 px-4">
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 shadow-2xl backdrop-blur">
         <div className="text-center mb-6">
-          <h1 className="text-2xl font-black text-white">Nauja Registracija</h1>
+          <h1 className="text-2xl font-black text-white">Nauja registracija</h1>
           <p className="text-xs text-slate-400 mt-1">
             Paskyra žaidimams, pakvietimams ir jūsų bilietams
           </p>
         </div>
 
-        {message && <p role="status" className="mb-4 text-sm text-emerald-200">{message}</p>}
+        {message && <div className="mb-4"><p role="status" className="text-sm text-emerald-200">{message}</p><Link href="/auth/resend-confirmation" className="mt-3 block text-xs text-amber-200">Negavote laiško? Gauti naują nuorodą →</Link></div>}
         {error && (
           <div role="alert" className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-xs text-center font-medium">
             {error}

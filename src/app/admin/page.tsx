@@ -8,12 +8,12 @@ export default async function AdminPage() {
   const supabase = await createClient();
 
   // Fetch profiles with seats
-  const { data: profiles } = await supabase
+  const { data: profiles, error: profilesError } = await supabase
     .from('profiles')
     .select('id, username, role, created_at')
     .order('created_at', { ascending: false });
 
-  const { data: seats } = await supabase
+  const { data: seats, error: seatsError } = await supabase
     .from('seats')
     .select('table_number, seat_number, user_id');
 
@@ -28,14 +28,14 @@ export default async function AdminPage() {
   return (
     <div className="container mx-auto px-4 max-w-6xl">
       <div className="mb-6">
-        <h1 className="text-3xl font-black text-white">Administratoriaus Skydelis</h1>
+        <h1 className="text-3xl font-black text-white">Ankstesnės salės valdymas</h1>
         <p className="text-sm text-slate-400">
-          Peržiūrėkite visus prisiregistravusius vartotojus ir jų vietas prie stalų.
+          Visos paskyros ir jų rezervacijos ankstesnėje salėje. Naujus žaidimų vakarus valdykite renginių skiltyje.
         </p>
       </div>
 
       <div className="flex flex-wrap gap-3 mb-6"><Link className="primary-button" href="/admin/events">Renginių valdymas</Link><Link className="secondary-button" href="/admin/check-in">Atvykimo registracija</Link></div>
-      <AdminTable users={usersWithSeats} />
+      {profilesError || seatsError ? <p role="status" className="panel text-sm text-amber-200">Žaidėjų ir salės duomenys šiuo metu nepasiekiami. Bandykite vėliau.</p> : <AdminTable users={usersWithSeats} />}
     </div>
   );
 }

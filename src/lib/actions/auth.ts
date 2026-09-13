@@ -28,7 +28,7 @@ export async function loginAction(formData: FormData): Promise<AuthResult> {
       if (!error && data.user) {
         const { data: profile } = await supabase.from('profiles').select('username').eq('id', data.user.id).maybeSingle();
         if (profile && (emailLogin || normalizeUsername(profile.username) === normalizeUsername(identifier))) { signedIn = true; break; }
-        await supabase.auth.signOut();
+        await supabase.auth.signOut({ scope: 'local' });
       }
     }
   } catch { return { error: 'Nepavyko prisijungti. Bandykite dar kartą.' }; }
@@ -57,6 +57,20 @@ export async function registerAction(formData: FormData): Promise<AuthResult> {
   redirect(next);
 }
 
+export async function resendConfirmationAction(formData: FormData): Promise<AuthResult> {
+  const email = readField(formData, 'email').trim().toLowerCase();
+  if (!validEmail(email)) return { error: 'Įveskite galiojantį el. pašto adresą.' };
+  if (!getSupabaseEnv().isConfigured) return { error: 'Patvirtinimo paslauga šiuo metu nepasiekiama.' };
+  try {
+    const { error } = await (await createClient()).auth.resend({
+      type: 'signup', email,
+      options: { emailRedirectTo: `${await getSiteOrigin()}/auth/callback` },
+    });
+    if (error) return { error: 'Nepavyko išsiųsti nuorodos. Palaukite ir bandykite dar kartą.' };
+    return { message: 'Jei šiuo el. paštu yra nepatvirtinta paskyra, išsiuntėme naują patvirtinimo nuorodą.' };
+  } catch { return { error: 'Patvirtinimo paslauga šiuo metu nepasiekiama.' }; }
+}
+
 export async function requestPasswordResetAction(formData: FormData): Promise<AuthResult> {
   const email = readField(formData,'email').trim().toLowerCase();
   if (!validEmail(email)) return { error: 'Įveskite galiojantį el. pašto adresą.' };
@@ -81,4 +95,4 @@ export async function resetPasswordAction(formData: FormData): Promise<AuthResul
   } catch { return { error: 'Paslauga šiuo metu nepasiekiama.' }; }
   redirect('/auth/login?notice=password-updated');
 }
-export async function logoutAction() { await (await createClient()).auth.signOut(); redirect('/auth/login'); }
+export async function logoutAction() { await (await createClient()).auth.signOut({ scope: 'local' }); redirect('/auth/login'); }

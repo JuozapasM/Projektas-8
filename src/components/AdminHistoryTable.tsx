@@ -1,5 +1,6 @@
 import React from 'react';
 import { SeatHistory } from '@/types/database';
+import { formatEventDate } from '@/lib/events';
 
 interface AdminHistoryTableProps {
   history: SeatHistory[];
@@ -37,7 +38,7 @@ export const AdminHistoryTable: React.FC<AdminHistoryTableProps> = ({ history })
               history.map((item) => (
                 <tr key={item.id} className="hover:bg-slate-800/50 transition-colors">
                   <td className="px-6 py-4 text-xs font-mono text-slate-400">
-                    {new Date(item.created_at).toLocaleString('lt-LT')}
+                    {formatEventDate(item.created_at)}
                   </td>
                   <td className="px-6 py-4 font-semibold text-white">{item.username}</td>
                   <td className="px-6 py-4 font-bold text-amber-400">Stalas {item.table_number}</td>

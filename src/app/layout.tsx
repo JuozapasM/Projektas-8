@@ -7,8 +7,8 @@ import { Navbar } from '@/components/Navbar';
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-  title: 'Auksinis Protas - Žaidimo Stalų Rezervacija',
-  description: 'Stalų ir vietų rezervavimo platforma Auksinis Protas žaidimui',
+  title: { default: 'Auksinis Protas – žaidimų vakarai', template: '%s | Auksinis Protas' },
+  description: 'Pasirinkite Auksinio Proto vakarą, rezervuokite vietą sau ar komandai ir turėkite savo bilietą po ranka.',
 };
 
 export default async function RootLayout({

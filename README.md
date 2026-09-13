@@ -7,6 +7,7 @@ Next.js 15, TypeScript, Tailwind CSS ir Supabase programa žaidimų vakarams org
 - Renginių kalendorius su data, vieta ir registracijos būsena.
 - Individualios rezervacijos bei 2–4 žmonių komandos prie vieno stalo. Kapitonas dalinasi privačia kvietimo nuoroda.
 - Laukiančiųjų eilė: atsilaisvinusi vieta automatiškai atitenka anksčiausiai užsiregistravusiam laukiančiam žaidėjui.
+- „Mano bilietai“ su visomis jūsų registracijomis, pasiekiamomis ir žaidimui prasidėjus.
 - Asmeninis QR bilietas ir administratoriaus patvirtinama atvykimo registracija.
 - Administratoriaus renginių, dalyvių ir rezultatų valdymas; paskelbtų rezultatų istorija.
 - Registracija su tikru el. paštu, paskyros patvirtinimas ir slaptažodžio atkūrimas.
@@ -16,8 +17,8 @@ Ankstesnė salė ir jos rezervacijos pasiekiamos `/hall`. Senų paskyrų prisiju
 ## Paleidimas
 
 ```bash
-npm install
-cp .env.local.example .env.local
+npm ci
+cp -n .env.local.example .env.local
 npm run dev
 ```
 
@@ -50,7 +51,7 @@ Supabase Authentication nustatymuose nustatykite tikrą **Site URL** ir į leid�
 
 Naujos paskyros pateikia tikrą el. paštą, todėl **Confirm email** gali būti įjungtas. Kai jis įjungtas, po registracijos rodoma instrukcija patikrinti paštą. Kai išjungtas, prisijungiama iš karto. Patikimam laiškų pristatymui sukonfigūruokite SMTP. Laiškų pristatymas nebuvo tikrinamas siunčiant laiškus į tikras paskyras.
 
-Programa palaiko standartinę patvirtinimo nuorodą su PKCE per `/auth/callback` ir nuorodas su `token_hash` per `/auth/confirm`. Atkūrimo nuorodos turi nukreipti į `/auth/reset-password`. Senoms paskyroms su vidiniu el. pašto adresu atkūrimo laiškai nepasiekiami; jų prisijungimas vardu veikia kaip anksčiau.
+Programa palaiko standartinę patvirtinimo nuorodą su PKCE per `/auth/callback` ir nuorodas su `token_hash` per `/auth/confirm`. Pasibaigus paskyros patvirtinimo nuorodai, naują galima gauti `/auth/resend-confirmation`. Pakartotinis siuntimas naudoja [Supabase resend API](https://supabase.com/docs/reference/javascript/auth-resend). Atkūrimo nuorodos turi nukreipti į `/auth/reset-password`. Senoms paskyroms su vidiniu el. pašto adresu atkūrimo laiškai nepasiekiami; jų prisijungimas vardu veikia kaip anksčiau.
 
 Vercel projekto aplinkoje pridėkite visus `.env.local.example` kintamuosius ir diekite kaip Next.js programą. Šiai programai `service_role` rakto nereikia.
 
@@ -59,10 +60,7 @@ Vercel projekto aplinkoje pridėkite visus `.env.local.example` kintamuosius ir 
 ## Patikros
 
 ```bash
-npm run lint
-npm run typecheck
-npm test
-npm run build
+npm run verify
 ```
 
 SQL testai naudoja izoliuotą PGlite PostgreSQL bazę ir nekeičia Supabase duomenų. Jie tikrina RLS, administratoriaus teises, atskiras renginių rezervacijas, komandų vietų laikymą, eilės perkėlimą, QR žetonus ir rezultatų publikavimą. Auth testai tikrina el. pašto registraciją, saugius nukreipimus, seną prisijungimą ir slaptažodžio atkūrimo logiką.
@@ -70,3 +68,16 @@ SQL testai naudoja izoliuotą PGlite PostgreSQL bazę ir nekeičia Supabase duom
 Šie testai nepatikrina realaus laiškų pristatymo, telefono kameros ar Supabase Realtime infrastruktūros. SQL funkcijų užraktai tikrinami per elgesio scenarijus, tačiau testai nenaudoja kelių lygiagrečių PostgreSQL jungčių.
 
 Ankstesnė vizualinė peržiūra: `docs/review/review.md`.
+
+## Produkto paketas
+
+```bash
+npm run verify
+npm run release:package
+```
+
+`release:package` komandai reikia Python 3. Archyvas sukuriamas `artifacts/auksinis-protas-0.1.0.zip`; jame yra programos kodas, užrakintos priklausomybių versijos, SQL migracijos, testai, instrukcijos ir `SHA256SUMS` kontrolinės sumos. Vietiniai aplinkos kintamieji, `node_modules`, Git istorija ir surinkimo talpykla į paketą neįtraukiami.
+
+Išskleidę paketą, paleiskite `npm ci`, užpildykite `.env.local` pagal pavyzdį, paruoškite Supabase bazę ir paleiskite `npm run verify`. Gamybiniam paleidimui: `npm run start`. Veikiant serveriui, `npm run smoke -- http://localhost:3000` patikrina puslapių atsakymus, nukreipimus ir CSS įkėlimą. Naudokite Node.js 24 LTS (nurodyta `.nvmrc`) arba Node.js 22 LTS; gamybai tinka palaikomos LTS versijos. [Node.js versijų būsenos](https://nodejs.org/en/about/previous-releases).
+
+Galutinės patikros ir paleidimo žingsniai: [produkto perdavimas](docs/product-handoff.md).

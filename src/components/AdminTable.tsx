@@ -2,6 +2,7 @@
 
 import React, { useState, useTransition } from 'react';
 import { adminRemoveSeatAction } from '@/lib/actions/seats';
+import { formatEventDate } from '@/lib/events';
 
 interface UserWithSeat {
   id: string;
@@ -47,7 +48,7 @@ export const AdminTable: React.FC<AdminTableProps> = ({ users }) => {
     <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
       <div className="p-6 border-b border-slate-800 flex flex-wrap justify-between items-center gap-4">
         <div>
-          <h2 className="text-xl font-bold text-white">Prisiregistravę Vartotojai</h2>
+          <h2 className="text-xl font-bold text-white">Užsiregistravę žaidėjai</h2>
           <p className="text-xs text-slate-400 mt-1">
             Visi užregistruoti žaidėjai ir jų priskirtos vietos salėje.
           </p>
@@ -75,7 +76,7 @@ export const AdminTable: React.FC<AdminTableProps> = ({ users }) => {
           <thead className="bg-slate-950 text-slate-400 uppercase text-xs tracking-wider">
             <tr>
               <th className="px-6 py-4">Vartotojo vardas</th>
-              <th className="px-6 py-4">Rolė</th>
+              <th className="px-6 py-4">Vaidmuo</th>
               <th className="px-6 py-4">Priskirta vieta</th>
               <th className="px-6 py-4">Registracijos data</th>
               <th className="px-6 py-4 text-right">Veiksmai</th>
@@ -100,7 +101,7 @@ export const AdminTable: React.FC<AdminTableProps> = ({ users }) => {
                           : 'bg-slate-800 text-slate-300'
                       }`}
                     >
-                      {u.role}
+                      {u.role === 'admin' ? 'Administratorius' : 'Žaidėjas'}
                     </span>
                   </td>
                   <td className="px-6 py-4">
@@ -113,7 +114,7 @@ export const AdminTable: React.FC<AdminTableProps> = ({ users }) => {
                     )}
                   </td>
                   <td className="px-6 py-4 text-xs text-slate-400">
-                    {new Date(u.created_at).toLocaleString('lt-LT')}
+                    {formatEventDate(u.created_at)}
                   </td>
                   <td className="px-6 py-4 text-right">
                     {u.seat && (

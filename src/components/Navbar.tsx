@@ -1,96 +1,52 @@
 'use client';
 
-import React from 'react';
+import { useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { ChevronDown } from 'lucide-react';
 import { logoutAction } from '@/lib/actions/auth';
 
 interface NavbarProps {
-  user: {
-    id: string;
-    username: string;
-    role: string;
-  } | null;
+  user: { id: string; username: string; role: string } | null;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ user }) => {
+const adminLinks = [
+  { href: '/admin/events', label: 'Renginių valdymas' },
+  { href: '/admin/check-in', label: 'Atvykimo registracija' },
+  { href: '/admin', label: 'Ankstesnė salė ir žaidėjai' },
+  { href: '/admin/history', label: 'Ankstesnių rezervacijų istorija' },
+];
+
+export function Navbar({ user }: NavbarProps) {
   const pathname = usePathname();
-  return (
-    <header className="border-b border-slate-800 bg-[#0b1019]/95 backdrop-blur sticky top-0 z-50">
-      <div className="max-w-6xl mx-auto px-5 sm:px-8 py-4 flex flex-wrap items-center justify-between gap-4">
-        <Link href="/" className="flex items-center gap-3 group">
-          <div className="w-10 h-10 rounded-xl bg-amber-200 flex items-center justify-center text-slate-950 font-black text-xl  group-hover:scale-105 transition-transform">
-            AP
+  const menu = useRef<HTMLDetailsElement>(null);
+  useEffect(() => { if (menu.current) menu.current.open = false; }, [pathname]);
+  const linkClass = 'rounded-lg px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-amber-200 aria-[current=page]:bg-slate-800 aria-[current=page]:text-amber-200';
+
+  return <header className="sticky top-0 z-50 border-b border-slate-800 bg-[#0b1019]/95 backdrop-blur">
+    <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-5 py-4 sm:px-8">
+      <Link href="/" className="group flex items-center gap-3">
+        <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-200 text-xl font-black text-slate-950">AP</span>
+        <span><span className="block text-lg font-extrabold tracking-tight text-white group-hover:text-amber-200">Auksinis Protas</span><span className="block text-xs text-slate-400">Žaidimų vakarai ir komandos</span></span>
+      </Link>
+      <nav aria-label="Pagrindinė navigacija" className="relative flex w-full flex-wrap items-center gap-1 sm:w-auto">
+        <Link href="/" className={linkClass} aria-current={pathname === '/' ? 'page' : undefined}>Renginiai</Link>
+        <Link href="/results" className={linkClass} aria-current={pathname === '/results' ? 'page' : undefined}>Rezultatai</Link>
+        {user && <Link href="/reservations" className={linkClass} aria-current={pathname === '/reservations' ? 'page' : undefined}>Mano bilietai</Link>}
+        {user?.role === 'admin' && <details ref={menu} className="sm:relative">
+          <summary className={`flex cursor-pointer list-none items-center gap-1 rounded-lg px-3 py-2 text-sm ${pathname.startsWith('/admin') ? 'bg-amber-200/10 text-amber-200' : 'text-slate-300 hover:bg-slate-800'}`}>Valdymas<ChevronDown size={14} aria-hidden="true" /></summary>
+          <div className="absolute inset-x-0 top-full mt-2 rounded-xl border border-slate-700 bg-slate-900 p-2 shadow-xl sm:left-auto sm:right-0 sm:w-64">
+            {adminLinks.map(({ href, label }) => <Link key={href} href={href} className={`block ${linkClass}`} aria-current={pathname === href || (href === '/admin/events' && pathname.startsWith('/admin/events/')) ? 'page' : undefined}>{label}</Link>)}
           </div>
-          <div>
-            <p className="font-extrabold text-white text-lg tracking-tight group-hover:text-amber-400 transition-colors">
-              Auksinis Protas
-            </p>
-            <p className="text-xs text-slate-400 font-medium">Stalų rezervacijos platforma</p>
-          </div>
-        </Link>
-
-        <nav aria-label="Pagrindinė navigacija" className="flex flex-wrap items-center gap-2 sm:gap-3">
-          <Link
-            href="/"
-            aria-current={pathname === "/" ? "page" : undefined}
-            className="text-sm font-medium text-slate-300 hover:text-amber-400 transition-colors px-3 py-1.5 rounded-lg hover:bg-slate-800"
-          >
-            Renginiai
-          </Link>
-
-          <Link href="/results" className="text-sm px-3 py-1.5 text-slate-300 hover:text-amber-200" aria-current={pathname === '/results' ? 'page' : undefined}>Rezultatai</Link>
-          {user?.role === 'admin'  && (
-            <>
-              <Link
-                href="/admin"
-                className="text-sm font-medium text-amber-400 hover:text-amber-300 transition-colors px-3 py-1.5 rounded-lg hover:bg-amber-500/10 border border-amber-500/30"
-              >
-                Valdymas
-              </Link>
-              <Link href="/admin/events" className="text-sm px-3 py-1.5 text-slate-300 hover:text-amber-200">Renginių valdymas</Link>
-              <Link href="/admin/check-in" className="text-sm px-3 py-1.5 text-slate-300 hover:text-amber-200">Atvykimas</Link>
-              <Link
-                href="/admin/history"
-                className="text-sm font-medium text-slate-300 hover:text-amber-400 transition-colors px-3 py-1.5 rounded-lg hover:bg-slate-800"
-              >
-                Istorija
-              </Link>
-            </>
-          )}
-
-          {user ? (
-            <div className="flex items-center gap-3 pl-2 border-l border-slate-800">
-              <span className="text-xs text-slate-400 max-w-32 truncate">
-                {user.username} {user.role === 'admin' && '(Admin)'}
-              </span>
-              <form action={logoutAction}>
-                <button
-                  type="submit"
-                  className="text-xs px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg transition-colors border border-slate-700"
-                >
-                  Atsijungti
-                </button>
-              </form>
-            </div>
-          ) : (
-            <div className="flex items-center gap-2">
-              <Link
-                href="/auth/login"
-                className="text-xs px-3.5 py-2 bg-amber-200 hover:bg-amber-100 text-slate-950 font-bold rounded-lg transition-colors"
-              >
-                Prisijungti
-              </Link>
-              <Link
-                href="/auth/register"
-                className="text-xs px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-white font-semibold rounded-lg border border-slate-700 transition-colors"
-              >
-                Registruotis
-              </Link>
-            </div>
-          )}
-        </nav>
-      </div>
-    </header>
-  );
-};
+        </details>}
+        {user ? <div className="ml-1 flex items-center gap-2 border-l border-slate-800 pl-3">
+          <span title={`${user.username}${user.role === 'admin' ? ' · administratorius' : ''}`} className="max-w-28 truncate text-xs text-slate-400">{user.username}{user.role === 'admin' && ' · Admin'}</span>
+          <form action={logoutAction}><button type="submit" className="rounded-lg border border-slate-700 px-3 py-2 text-xs text-slate-300 hover:bg-slate-800">Atsijungti</button></form>
+        </div> : <div className="ml-1 flex flex-wrap gap-2">
+          <Link href="/auth/login" className="rounded-lg bg-amber-200 px-3 py-2 text-xs font-semibold text-slate-950 hover:bg-amber-100">Prisijungti</Link>
+          <Link href="/auth/register" className="rounded-lg border border-slate-700 px-3 py-2 text-xs text-slate-200 hover:bg-slate-800">Registruotis</Link>
+        </div>}
+      </nav>
+    </div>
+  </header>;
+}

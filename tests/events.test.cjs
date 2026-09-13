@@ -30,8 +30,9 @@ test('event reservations, FIFO waiting list, teams, tickets, result publication 
     assert.equal((await rpc('reserve_event_seat',`'${event2}'`)).success,true);
     assert.equal((await rpc('reserve_event_seat',`'${event1}'`)).success,false);
     for(let n=1;n<26;n++){await as(n);assert.equal((await rpc('reserve_event_seat',`'${event1}'`)).success,true);}
-    await as(25);assert.equal(await rpc('get_event_waitlist_position',`'${event1}'`),2);assert.equal((await db.query(`SELECT status FROM public.event_registrations WHERE event_id='${event1}' AND user_id='${uuid(25)}'`)).rows[0].status,'waiting');
+    // Control registration timestamps: PGlite can assign the same millisecond to both arrivals.
     await db.exec(`RESET ROLE;UPDATE public.event_registrations SET created_at=CASE WHEN user_id='${uuid(24)}' THEN '2026-01-01'::timestamptz ELSE '2026-01-02'::timestamptz END WHERE event_id='${event1}' AND status='waiting';`);
+    await as(25);assert.equal(await rpc('get_event_waitlist_position',`'${event1}'`),2);assert.equal((await db.query(`SELECT status FROM public.event_registrations WHERE event_id='${event1}' AND user_id='${uuid(25)}'`)).rows[0].status,'waiting');
     await as(1);await assert.rejects(rpc('cancel_event_reservation',`'${event1}','${uuid(0)}'`),/teisės/);
     await as(0);assert.equal((await rpc('cancel_event_reservation',`'${event1}'`)).success,true);
     assert.equal((await rpc('cancel_event_reservation',`'${event1}'`)).success,false);

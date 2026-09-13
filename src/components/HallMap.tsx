@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Search, RefreshCw, Radio, X } from 'lucide-react';
 import { Seat } from '@/types/database';
@@ -15,34 +15,58 @@ export function HallMap({ initialSeats, currentUserId, isAvailable = true, event
   const [live, setLive] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const activeFetch = useRef<AbortController | null>(null);
 
   const fetchSeats = useCallback(async () => {
+    activeFetch.current?.abort();
+    const controller = new AbortController();
+    activeFetch.current = controller;
     setLoading(true);
     try {
       let query = createClient().from(eventId ? 'event_seats' : 'seats').select('*, profiles(username)').order('table_number').order('seat_number');
       if (eventId) query = query.eq('event_id', eventId);
-      const { data, error } = await query;
-      if (error || !data?.length) throw new Error('Vietų duomenys nepasiekiami. Bandykite dar kartą.');
+      const { data, error } = await query.abortSignal(controller.signal);
+      if (controller.signal.aborted) return;
+      if (error || data?.length !== 24) throw new Error('Vietų duomenys nepasiekiami. Bandykite dar kartą.');
       setSeats(data as Seat[]);
       setError(null);
       // Refresh the user's reservation controls as well as the map.
       router.refresh();
     } catch {
-      setError('Nepavyko atnaujinti vietų. Rodomi paskutiniai gauti duomenys.');
-    } finally { setLoading(false); }
+      if (!controller.signal.aborted) setError('Nepavyko atnaujinti vietų. Rodomi paskutiniai gauti duomenys.');
+    } finally {
+      if (activeFetch.current === controller) { activeFetch.current = null; setLoading(false); }
+    }
   }, [router, eventId]);
 
   useEffect(() => { setSeats(initialSeats); }, [initialSeats]);
   useEffect(() => {
+    setLive(false);
     if (!isAvailable) return;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const scheduleRefresh = () => {
+      if (document.visibilityState !== 'visible') return;
+      clearTimeout(timer);
+      timer = setTimeout(() => { void fetchSeats(); }, 200);
+    };
     const supabase = createClient();
-    const channel = supabase.channel(`realtime_seats_${eventId || 'legacy'}`).on('postgres_changes', { event: '*', schema: 'public', table: eventId ? 'event_seats' : 'seats', ...(eventId ? { filter: `event_id=eq.${eventId}` } : {}) }, () => { void fetchSeats(); });
-    if (eventId) channel.on('postgres_changes', { event: '*', schema: 'public', table: 'event_registrations', filter: `event_id=eq.${eventId}` }, () => router.refresh());
+    const channel = supabase.channel(`realtime_seats_${eventId || 'legacy'}`).on('postgres_changes', { event: '*', schema: 'public', table: eventId ? 'event_seats' : 'seats', ...(eventId ? { filter: `event_id=eq.${eventId}` } : {}) }, scheduleRefresh);
+    if (eventId) channel.on('postgres_changes', { event: '*', schema: 'public', table: 'event_registrations', filter: `event_id=eq.${eventId}` }, scheduleRefresh);
     channel.subscribe(status => {
       setLive(status === 'SUBSCRIBED');
-      if (status === 'SUBSCRIBED') void fetchSeats();
+      if (status === 'SUBSCRIBED') scheduleRefresh();
     });
-    return () => { void supabase.removeChannel(channel); };
+    // Queue positions and event status can change without a visible row notification.
+    const poll = setInterval(scheduleRefresh, 30000);
+    window.addEventListener('focus', scheduleRefresh);
+    document.addEventListener('visibilitychange', scheduleRefresh);
+    return () => {
+      clearTimeout(timer); clearInterval(poll);
+      window.removeEventListener('focus', scheduleRefresh);
+      document.removeEventListener('visibilitychange', scheduleRefresh);
+      activeFetch.current?.abort();
+      void supabase.removeChannel(channel);
+    };
   }, [isAvailable, fetchSeats, eventId, router]);
 
   const occupied = seats.filter(s => !!s.user_id || !!s.team_id).length;
@@ -54,7 +78,7 @@ export function HallMap({ initialSeats, currentUserId, isAvailable = true, event
     <section id="sale" className="scroll-mt-28">
       <div className="flex flex-wrap justify-between gap-4 items-end mb-5">
         <div><p className="text-[10px] tracking-[.2em] uppercase text-amber-200/70 mb-2">Susitinkame čia</p><h2 className="text-2xl font-semibold tracking-tight">Žaidimo salė</h2><p className="text-sm text-slate-400 mt-2">{isAvailable ? <><span className="text-emerald-200">{seats.length - occupied} laisvos vietos</span> · {occupied} iš {seats.length} užimta</> : 'Vietų užimtumas šiuo metu nežinomas'}</p></div>
-        <div className="flex items-center gap-3"><span role="status" className={`inline-flex items-center gap-1.5 text-[11px] ${live ? 'text-emerald-200/80' : 'text-slate-400'}`}><Radio size={13} aria-hidden="true" />{!isAvailable ? 'Peržiūros režimas' : live ? 'Atnaujinama gyvai' : 'Gyvas ryšys neprijungtas'}</span><button onClick={() => isAvailable ? void fetchSeats() : router.refresh()} disabled={loading} aria-label="Atnaujinti salės duomenis" className="rounded-lg border border-slate-700 p-2 text-slate-400 hover:text-amber-200 disabled:opacity-50"><RefreshCw size={15} className={loading ? 'animate-spin' : ''} aria-hidden="true" /></button></div>
+        <div className="flex items-center gap-3"><span role="status" className={`inline-flex items-center gap-1.5 text-[11px] ${live ? 'text-emerald-200/80' : 'text-slate-400'}`}><Radio size={13} aria-hidden="true" />{!isAvailable ? 'Peržiūros režimas' : live ? 'Atnaujinama gyvai' : 'Atnaujinama kas 30 s'}</span><button onClick={() => isAvailable ? void fetchSeats() : router.refresh()} disabled={loading} aria-label="Atnaujinti salės duomenis" className="rounded-lg border border-slate-700 p-2 text-slate-400 hover:text-amber-200 disabled:opacity-50"><RefreshCw size={15} className={loading ? 'animate-spin' : ''} aria-hidden="true" /></button></div>
       </div>
       <div className="flex flex-col sm:flex-row gap-3 justify-between mb-5">
         <div className="relative sm:w-72"><Search size={15} className="absolute left-3 top-3.5 text-slate-500" aria-hidden="true" /><input aria-label="Ieškoti žaidėjo arba stalo" placeholder="Žaidėjo vardas arba stalas…" value={search} onChange={e => setSearch(e.target.value)} className="w-full rounded-xl border border-slate-800 bg-[#111824] py-3 pl-9 pr-9 text-xs placeholder:text-slate-500" />{search && <button aria-label="Išvalyti paiešką" onClick={() => setSearch('')} className="absolute right-3 top-3 text-slate-400"><X size={16} /></button>}</div>

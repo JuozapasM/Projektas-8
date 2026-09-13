@@ -18,11 +18,11 @@ export default function LoginPage() {
     const formData = new FormData(e.currentTarget);
 
     startTransition(async () => {
-      const res = await loginAction(formData);
-      if (res?.message) setMessage(res.message);
-      if (res?.error) {
-        setError(res.error);
-      }
+      try {
+        const res = await loginAction(formData);
+        if (res?.message) setMessage(res.message);
+        if (res?.error) setError(res.error);
+      } catch { setError('Nepavyko susisiekti su paslauga. Bandykite dar kartą.'); }
     });
   };
 
@@ -37,7 +37,7 @@ export default function LoginPage() {
         </div>
 
         {searchParams.get('notice') === 'password-updated' && <p role="status" className="mb-4 text-sm text-emerald-200">Slaptažodis pakeistas. Prisijunkite su nauju slaptažodžiu.</p>}
-        {searchParams.get('error') === 'link-expired' && <p role="alert" className="mb-4 text-sm text-red-300">Patvirtinimo nuoroda nebegalioja. Paprašykite naujos nuorodos.</p>}
+        {searchParams.get('error') === 'link-expired' && <p role="alert" className="mb-4 text-sm text-red-300">Nuoroda nebegalioja. Slaptažodžiui naudokite atkūrimo nuorodą, o paskyrai — naują el. pašto patvirtinimą.</p>}
         {message && <p role="status" className="mb-4 text-sm text-emerald-200">{message}</p>}
         {error && (
           <div role="alert" className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-xs text-center font-medium">
@@ -87,6 +87,7 @@ export default function LoginPage() {
           </button>
         </form>
 
+        <Link href="/auth/resend-confirmation" className="mt-5 block text-xs text-slate-300 hover:text-amber-200">Negavote paskyros patvirtinimo laiško?</Link>
         <Link href="/auth/forgot-password" className="mt-5 block text-xs text-amber-200">Pamiršote slaptažodį?</Link>
         <div className="mt-6 pt-4 border-t border-slate-800 text-center text-xs text-slate-400">
           Dar neturite paskyros?{' '}

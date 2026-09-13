@@ -59,7 +59,7 @@ test('signup and login preserve the invitation destination and reject external d
 });
 test('legacy character stripping cannot log in to a differently named profile', async () => {
   let signsOut = 0;
-  const client = { auth:{signInWithPassword:async () => ({data:{user:{id:'player'}},error:null}),signOut:async () => { signsOut++; }},from:() => ({select:() => ({eq:() => ({maybeSingle:async () => ({data:{username:'Jonas'}})})})}) };
+  const client = { auth:{signInWithPassword:async () => ({data:{user:{id:'player'}},error:null}),signOut:async options => { assert.equal(options.scope,'local'); signsOut++; }},from:() => ({select:() => ({eq:() => ({maybeSingle:async () => ({data:{username:'Jonas'}})})})}) };
   assert.ok((await loadAuth(client).loginAction(form('Jon-as'))).error); assert.equal(signsOut,3);
 });
 test('Juozapas legacy login continues to authenticate through Supabase and preserves the existing admin profile', async () => {
@@ -79,4 +79,14 @@ test('reset requests do not disclose whether an email belongs to an account', as
 test('password updates reject mismatches and unauthenticated requests', async () => {
   const f=form('Jonas');f.set('password_confirmation','different');const actions=loadAuth({auth:{getUser:async () => ({data:{user:null}})}});
   assert.match((await actions.resetPasswordAction(f)).error,/nesutampa/);f.set('password_confirmation','password123');assert.match((await actions.resetPasswordAction(f)).error,/nebegalioja/);
+});
+
+test('expired signup confirmations can be requested again without disclosing account existence', async () => {
+  let request;
+  const client = { auth: { resend: async args => { request = args; return { error: null }; } } };
+  const f = form('Jonas');
+  const result = await loadAuth(client).resendConfirmationAction(f);
+  assert.equal(request.type, 'signup'); assert.equal(request.email, f.get('email'));
+  assert.equal(request.options.emailRedirectTo, 'https://example.test/auth/callback');
+  assert.match(result.message, /Jei šiuo el. paštu/);
 });

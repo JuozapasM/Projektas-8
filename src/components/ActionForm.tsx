@@ -4,10 +4,11 @@ import { useEffect, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { ActionResult } from '@/types/database';
 
-export function ActionForm({ action, children, label = 'Išsaugoti', goToCreatedEvent = false }: { action: (data: FormData) => Promise<ActionResult>; children: React.ReactNode; label?: string; goToCreatedEvent?: boolean }) {
+export function ActionForm({ action, children, label = 'Išsaugoti', goToCreatedEvent = false, confirmEventCancellation = false }: { action: (data: FormData) => Promise<ActionResult>; children: React.ReactNode; label?: string; goToCreatedEvent?: boolean; confirmEventCancellation?: boolean }) {
   const [pending, start] = useTransition(); const [result, setResult] = useState<ActionResult | null>(null); const router = useRouter();
   return <form onSubmit={e => {
     e.preventDefault(); const data = new FormData(e.currentTarget); setResult(null);
+    if (confirmEventCancellation && data.get('status') === 'cancelled' && !window.confirm('Atšaukti renginį? Bus atšauktos visų žaidėjų ir komandų rezervacijos. Šio renginio iš naujo atidaryti nebegalėsite.')) return;
     const date = data.get('starts_at_local');
     if (typeof date === 'string') {
       if (!date || !Number.isFinite(Date.parse(date))) { setResult({ success: false, message: 'Pasirinkite galiojančią datą ir laiką.' }); return; }

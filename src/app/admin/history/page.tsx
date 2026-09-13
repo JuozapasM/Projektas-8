@@ -7,7 +7,7 @@ export const revalidate = 0;
 export default async function AdminHistoryPage() {
   const supabase = await createClient();
 
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('seat_history')
     .select('*')
     .order('created_at', { ascending: false });
@@ -23,7 +23,7 @@ export default async function AdminHistoryPage() {
         </p>
       </div>
 
-      <AdminHistoryTable history={history} />
+      {error ? <p role="status" className="panel text-sm text-amber-200">Rezervacijų istorija šiuo metu nepasiekiama. Bandykite vėliau.</p> : <AdminHistoryTable history={history} />}
     </div>
   );
 }
