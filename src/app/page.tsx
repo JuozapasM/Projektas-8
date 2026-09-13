@@ -9,10 +9,12 @@ export default async function HomePage() {
   let seats: Seat[] = [];
   let currentUser: { id: string; username: string } | null = null;
   let userSeat: Seat | null = null;
+
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
   const isSupabaseConfigured =
-    Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL) &&
-    !process.env.NEXT_PUBLIC_SUPABASE_URL?.includes('your-supabase') &&
-    !process.env.NEXT_PUBLIC_SUPABASE_URL?.includes('placeholder');
+    Boolean(url) &&
+    !url?.includes('your-supabase') &&
+    !url?.includes('placeholder');
 
   try {
     const supabase = await createClient();
