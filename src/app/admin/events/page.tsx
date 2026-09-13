@@ -1,0 +1,10 @@
+import { createClient } from '@/lib/supabase/server';
+import { createEventAction } from '@/lib/actions/events';
+import { GameEvent } from '@/types/database';
+import { ActionForm, LocalDateField } from '@/components/ActionForm';
+import { EventCard } from '@/components/EventCard';
+
+export default async function AdminEventsPage() {
+  const { data, error } = await (await createClient()).from('game_events').select('*').order('starts_at',{ascending:false});
+  return <div className="max-w-6xl mx-auto px-5 sm:px-8"><h1 className="text-3xl font-bold mb-3">Renginių valdymas</h1><p className="text-sm text-slate-400 mb-8">Sukurkite žaidimo vakarą, valdykite registraciją ir paskelbkite rezultatus.</p>{error && <p role="status" className="panel mb-6 text-amber-200 text-sm">Renginių paslauga dar neparuošta arba nepasiekiama. Renginius bus galima valdyti atkūrus paslaugą.</p>}<section className="panel mb-8"><h2 className="text-xl font-semibold mb-5">Naujas žaidimo vakaras</h2><ActionForm action={createEventAction} label="Sukurti renginį" goToCreatedEvent><div className="grid md:grid-cols-2 gap-4"><label className="field-label">Pavadinimas<input className="field mt-2" name="title" required minLength={2} maxLength={120} placeholder="Auksinio Proto vakaras" /></label><LocalDateField /><label className="field-label">Susitikimo vieta<input className="field mt-2" name="location" required minLength={2} maxLength={200} placeholder="Vieta ir adresas" /></label></div><label className="field-label">Aprašymas<textarea name="description" className="field mt-2" maxLength={2000} rows={3} placeholder="Ką turėtų žinoti žaidėjai?" /></label><p className="text-xs text-slate-400">Bus sukurti 6 stalai po 4 vietas. Data viešai rodoma Lietuvos laiku.</p></ActionForm></section><section><h2 className="text-xl font-semibold mb-5">Visi renginiai</h2><div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">{((data || []) as GameEvent[]).map(e => <EventCard key={e.id} event={e} admin />)}</div>{!data?.length && !error && <p className="text-slate-400 text-sm">Renginių dar nėra. Sukurkite pirmąjį žaidimo vakarą.</p>}</section></div>;
+}

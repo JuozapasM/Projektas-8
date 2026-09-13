@@ -36,10 +36,11 @@ export const Navbar: React.FC<NavbarProps> = ({ user }) => {
             aria-current={pathname === "/" ? "page" : undefined}
             className="text-sm font-medium text-slate-300 hover:text-amber-400 transition-colors px-3 py-1.5 rounded-lg hover:bg-slate-800"
           >
-            Žaidimo salė
+            Renginiai
           </Link>
 
-          {user?.role === 'admin' && (
+          <Link href="/results" className="text-sm px-3 py-1.5 text-slate-300 hover:text-amber-200" aria-current={pathname === '/results' ? 'page' : undefined}>Rezultatai</Link>
+          {user?.role === 'admin'  && (
             <>
               <Link
                 href="/admin"
@@ -47,6 +48,8 @@ export const Navbar: React.FC<NavbarProps> = ({ user }) => {
               >
                 Valdymas
               </Link>
+              <Link href="/admin/events" className="text-sm px-3 py-1.5 text-slate-300 hover:text-amber-200">Renginių valdymas</Link>
+              <Link href="/admin/check-in" className="text-sm px-3 py-1.5 text-slate-300 hover:text-amber-200">Atvykimas</Link>
               <Link
                 href="/admin/history"
                 className="text-sm font-medium text-slate-300 hover:text-amber-400 transition-colors px-3 py-1.5 rounded-lg hover:bg-slate-800"

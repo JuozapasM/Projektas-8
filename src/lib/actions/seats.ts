@@ -22,6 +22,7 @@ export async function reserveSeatAction() {
   }
 
   revalidatePath('/');
+  revalidatePath('/hall');
   return data;
 }
 
@@ -44,6 +45,7 @@ export async function cancelSeatAction() {
   }
 
   revalidatePath('/');
+  revalidatePath('/hall');
   return data;
 }
 
@@ -79,5 +81,6 @@ export async function adminRemoveSeatAction(targetUserId: string) {
   revalidatePath('/admin/history');
   revalidatePath('/admin');
   revalidatePath('/');
+  revalidatePath('/hall');
   return data;
 }

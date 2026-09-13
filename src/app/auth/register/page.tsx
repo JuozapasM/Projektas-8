@@ -2,19 +2,24 @@
 
 import React, { useState, useTransition } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { registerAction } from '@/lib/actions/auth';
 
 export default function RegisterPage() {
+  const searchParams = useSearchParams();
+  const [message, setMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
+    setMessage(null);
     const formData = new FormData(e.currentTarget);
 
     startTransition(async () => {
       const res = await registerAction(formData);
+      if (res?.message) setMessage(res.message);
       if (res?.error) {
         setError(res.error);
       }
@@ -27,10 +32,11 @@ export default function RegisterPage() {
         <div className="text-center mb-6">
           <h1 className="text-2xl font-black text-white">Nauja Registracija</h1>
           <p className="text-xs text-slate-400 mt-1">
-            Sukurkite savo paskyrą su vardu ir slaptažodžiu
+            Paskyra žaidimams, pakvietimams ir jūsų bilietams
           </p>
         </div>
 
+        {message && <p role="status" className="mb-4 text-sm text-emerald-200">{message}</p>}
         {error && (
           <div role="alert" className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-xs text-center font-medium">
             {error}
@@ -38,6 +44,7 @@ export default function RegisterPage() {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          <input type="hidden" name="next" value={searchParams.get("next") || "/"} />
           <div>
             <label htmlFor="username" className="block text-xs font-semibold text-slate-300 mb-1">
               Jūsų vardas
@@ -55,6 +62,7 @@ export default function RegisterPage() {
             />
           </div>
 
+          <div><label htmlFor="email" className="field-label">El. paštas</label><input id="email" name="email" type="email" autoComplete="email" maxLength={254} required className="field" placeholder="jusu@pastas.lt" /><p className="mt-2 text-xs text-slate-400">Prisijungimui ir slaptažodžio atkūrimui.</p></div>
           <div>
             <label htmlFor="password" className="block text-xs font-semibold text-slate-300 mb-1">
               Slaptažodis (bent 6 simboliai)
@@ -76,13 +84,13 @@ export default function RegisterPage() {
             disabled={isPending}
             className="w-full py-3 bg-amber-200 hover:bg-amber-100 text-emerald-950 font-bold rounded-xl transition-all shadow-lg shadow-emerald-500/20 disabled:opacity-50 text-sm mt-2"
           >
-            {isPending ? 'Registruojama...' : 'Registruotis ir gauti vietą'}
+            {isPending ? 'Registruojama...' : 'Sukurti paskyrą'}
           </button>
         </form>
 
         <div className="mt-6 pt-4 border-t border-slate-800 text-center text-xs text-slate-400">
           Jau turite paskyrą?{' '}
-          <Link href="/auth/login" className="text-amber-400 hover:underline font-semibold">
+          <Link href={`/auth/login?next=${encodeURIComponent(searchParams.get("next") || "/")}`} className="text-amber-400 hover:underline font-semibold">
             Prisijungti
           </Link>
         </div>

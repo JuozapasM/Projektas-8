@@ -7,7 +7,7 @@ import { Seat } from '@/types/database';
 import { TableCard } from './TableCard';
 import { createClient } from '@/lib/supabase/client';
 
-export function HallMap({ initialSeats, currentUserId, isAvailable = true }: { initialSeats: Seat[]; currentUserId?: string | null; isAvailable?: boolean }) {
+export function HallMap({ initialSeats, currentUserId, isAvailable = true, eventId }: { initialSeats: Seat[]; currentUserId?: string | null; isAvailable?: boolean; eventId?: string }) {
   const router = useRouter();
   const [seats, setSeats] = useState(initialSeats);
   const [search, setSearch] = useState('');
@@ -19,7 +19,9 @@ export function HallMap({ initialSeats, currentUserId, isAvailable = true }: { i
   const fetchSeats = useCallback(async () => {
     setLoading(true);
     try {
-      const { data, error } = await createClient().from('seats').select('*, profiles(username)').order('table_number').order('seat_number');
+      let query = createClient().from(eventId ? 'event_seats' : 'seats').select('*, profiles(username)').order('table_number').order('seat_number');
+      if (eventId) query = query.eq('event_id', eventId);
+      const { data, error } = await query;
       if (error || !data?.length) throw new Error('Vietų duomenys nepasiekiami. Bandykite dar kartą.');
       setSeats(data as Seat[]);
       setError(null);
@@ -28,25 +30,25 @@ export function HallMap({ initialSeats, currentUserId, isAvailable = true }: { i
     } catch {
       setError('Nepavyko atnaujinti vietų. Rodomi paskutiniai gauti duomenys.');
     } finally { setLoading(false); }
-  }, [router]);
+  }, [router, eventId]);
 
   useEffect(() => { setSeats(initialSeats); }, [initialSeats]);
   useEffect(() => {
     if (!isAvailable) return;
     const supabase = createClient();
-    const channel = supabase.channel('realtime_seats').on('postgres_changes', { event: '*', schema: 'public', table: 'seats' }, () => { void fetchSeats(); })
-      .subscribe(status => {
-        setLive(status === 'SUBSCRIBED');
-        // Catch changes between the server render and the subscription.
-        if (status === 'SUBSCRIBED') void fetchSeats();
-      });
+    const channel = supabase.channel(`realtime_seats_${eventId || 'legacy'}`).on('postgres_changes', { event: '*', schema: 'public', table: eventId ? 'event_seats' : 'seats', ...(eventId ? { filter: `event_id=eq.${eventId}` } : {}) }, () => { void fetchSeats(); });
+    if (eventId) channel.on('postgres_changes', { event: '*', schema: 'public', table: 'event_registrations', filter: `event_id=eq.${eventId}` }, () => router.refresh());
+    channel.subscribe(status => {
+      setLive(status === 'SUBSCRIBED');
+      if (status === 'SUBSCRIBED') void fetchSeats();
+    });
     return () => { void supabase.removeChannel(channel); };
-  }, [isAvailable, fetchSeats]);
+  }, [isAvailable, fetchSeats, eventId, router]);
 
-  const occupied = seats.filter(s => !!s.user_id).length;
+  const occupied = seats.filter(s => !!s.user_id || !!s.team_id).length;
   const query = search.toLocaleLowerCase('lt-LT').trim();
   const tables = [1, 2, 3, 4, 5, 6].map(n => ({ number: n, seats: seats.filter(s => s.table_number === n) }))
-    .filter(t => (!onlyFree || t.seats.some(s => !s.user_id)) && (!query || `stalas ${t.number}`.includes(query) || t.seats.some(s => s.profiles?.username.toLocaleLowerCase('lt-LT').includes(query))));
+    .filter(t => (!onlyFree || t.seats.some(s => !s.user_id && !s.team_id)) && (!query || `stalas ${t.number}`.includes(query) || t.seats.some(s => s.profiles?.username.toLocaleLowerCase('lt-LT').includes(query))));
 
   return (
     <section id="sale" className="scroll-mt-28">

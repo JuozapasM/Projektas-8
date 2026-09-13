@@ -1,64 +1,62 @@
-# "Auksinis Protas" Stalų Rezervavimo Platforma
+# „Auksinis Protas“ renginių platforma
 
-Ši platforma skirta "Auksinis Protas" žaidimo stalų (6 stalai x 4 vietos = 24 vietos) rezervacijai. Žaidėjai registruojasi su savo vardu ir slaptažodžiu, o sistema juos automatiškai atsitiktine tvarka priskiria prie laisvo stalo ir vietos.
+Next.js 15, TypeScript, Tailwind CSS ir Supabase programa žaidimų vakarams organizuoti. Kiekvienas renginys turi atskiras 24 vietas (6 stalai po 4 vietas).
 
-## Tech Stack
-- **Framework**: Next.js 15 (App Router, Server Actions)
-- **Kalba**: TypeScript
-- **Stiliai**: Tailwind CSS
-- **Duomenų bazė / Realtime / Auth**: Supabase
-- **Hostingas & Git**: Vercel + GitHub
+## Funkcijos
 
----
+- Renginių kalendorius su data, vieta ir registracijos būsena.
+- Individualios rezervacijos bei 2–4 žmonių komandos prie vieno stalo. Kapitonas dalinasi privačia kvietimo nuoroda.
+- Laukiančiųjų eilė: atsilaisvinusi vieta automatiškai atitenka anksčiausiai užsiregistravusiam laukiančiam žaidėjui.
+- Asmeninis QR bilietas ir administratoriaus patvirtinama atvykimo registracija.
+- Administratoriaus renginių, dalyvių ir rezultatų valdymas; paskelbtų rezultatų istorija.
+- Registracija su tikru el. paštu, paskyros patvirtinimas ir slaptažodžio atkūrimas.
 
-## 🚀 Diegimo Instrukcija
+Ankstesnė salė ir jos rezervacijos pasiekiamos `/hall`. Senų paskyrų prisijungimas vartotojo vardu išlaikytas. Esamas „Juozapas“ administratoriaus vaidmuo bei prisijungimo duomenys nekeičiami. Naujos paskyros gauna žaidėjo vaidmenį.
 
-### 1. Duomenų bazės parengimas (Supabase)
-1. Eikite į [Supabase Console](https://supabase.com) ir sukurkite naują projektą.
-2. Eikite į **SQL Editor** ir nukopijuokite visą turinį iš projekto failo `supabase/schema.sql`.
-3. Įvykdykite SQL užklausą (`Run`). Tai sukurs:
-   - `profiles`, `seats` (24 pradinės vietos) ir `seat_history` lenteles.
-   - Atominias transakcijų funkcijas (`assign_random_seat`, `cancel_seat_reservation`, `admin_remove_seat`).
-   - Supabase Realtime prenumeratą stalų būsenos atsinaujinimui gyvai.
+## Paleidimas
 
-### 2. Administratoriaus paskyros suteikimas
-Norėdami suteikti registruotam vartotojui administratoriaus teises, Supabase SQL Editor įvykdykite:
+```bash
+npm install
+cp .env.local.example .env.local
+npm run dev
+```
+
+Į `.env.local` įrašykite savo projekto viešą Supabase URL ir anon raktą. `NEXT_PUBLIC_SITE_URL` nurodo programos adresą, naudojamą el. pašto ir QR nuorodoms. Viešai veikiančiai programai naudokite jos HTTPS adresą. Vietinis adresas telefono QR skaitytuvui nebus pasiekiamas.
+
+Atidarykite [http://localhost:3000](http://localhost:3000). Administratoriaus renginių valdymas: `/admin/events`. Tikrų renginių datos kuriamos administratoriaus formoje; programa neprideda pavyzdinių renginių į jūsų bazę.
+
+## Duomenų bazė
+
+Naujai Supabase bazei SQL Editor paleiskite visą `supabase/schema.sql`.
+
+Esamai bazei migracijas paleiskite šia tvarka:
+
+1. `supabase/migrations/20260913_reservation_security.sql`
+2. `supabase/migrations/20260914_events_teams.sql`
+
+Migracijos išlaiko esamas paskyras, administratorių vaidmenis ir senosios salės rezervacijas. Renginių lentelėms taikomas RLS; rezervacijos keičiamos tik per tikrinamas transakcines RPC funkcijas. Renginio eilutės užraktas serializuoja rezervavimo, komandų ir eilės pakeitimus.
+
+Administratoriaus teises patikimam organizatoriui suteikite SQL Editor, pasirinkę konkrečią paskyrą:
+
 ```sql
 UPDATE public.profiles
 SET role = 'admin'
-WHERE username = 'JUSU_ADMIN_VARDAS';
+WHERE id = 'ORGANIZATORIAUS_PASKYROS_UUID';
 ```
 
-### 3. Aplinkos kintamieji (`.env.local`)
-Sukurkite `.env.local` failą šaknineme kataloge su šiais kintamaisiais iš Supabase Settings -> API:
-```env
-NEXT_PUBLIC_SUPABASE_URL=https://<your-project-id>.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=<your-anon-key>
-```
+## El. paštas ir diegimas
 
-### 4. Vietinis paleidimas
-```bash
-npm install
-npm run dev
-```
-Atidarykite naršyklėje [http://localhost:3000](http://localhost:3000).
+Supabase Authentication nustatymuose nustatykite tikrą **Site URL** ir į leidžiamus **Redirect URLs** įtraukite programos `/auth/callback` adresus su užklausos parametrais (pvz., `https://jusu-domenas.lt/auth/callback**`). Vietiniam darbui taip pat pridėkite `http://localhost:3000/auth/callback**`.
 
----
+Naujos paskyros pateikia tikrą el. paštą, todėl **Confirm email** gali būti įjungtas. Kai jis įjungtas, po registracijos rodoma instrukcija patikrinti paštą. Kai išjungtas, prisijungiama iš karto. Patikimam laiškų pristatymui sukonfigūruokite SMTP. Laiškų pristatymas nebuvo tikrinamas siunčiant laiškus į tikras paskyras.
 
-## 📦 Talpinimas Vercel platformoje bei GitHub
-1. Įkelkite šį projektą į savo **GitHub** repozitoriją:
-   ```bash
-   git init
-   git add .
-   git commit -m "Initial commit"
-   git remote add origin https://github.com/<user>/<repo>.git
-   git push -u origin main
-   ```
-2. Prisijunkite prie [Vercel](https://vercel.com) ir importuokite šią GitHub repozitoriją.
-3. Vercel projekto nustatymuose įtraukite `NEXT_PUBLIC_SUPABASE_URL` ir `NEXT_PUBLIC_SUPABASE_ANON_KEY` aplinkos kintamuosius.
-4. Spustelėkite **Deploy**.
+Programa palaiko standartinę patvirtinimo nuorodą su PKCE per `/auth/callback` ir nuorodas su `token_hash` per `/auth/confirm`. Atkūrimo nuorodos turi nukreipti į `/auth/reset-password`. Senoms paskyroms su vidiniu el. pašto adresu atkūrimo laiškai nepasiekiami; jų prisijungimas vardu veikia kaip anksčiau.
 
-## Patikros ir saugumo atnaujinimas
+Vercel projekto aplinkoje pridėkite visus `.env.local.example` kintamuosius ir diekite kaip Next.js programą. Šiai programai `service_role` rakto nereikia.
+
+`.env.local.example` leidžiamos tik pavyzdinės reikšmės. Ankstesnėje versijoje jame buvo `service_role` raktas; jei jis buvo bendrintas ar įkeltas į Git, pakeiskite jį Supabase nustatymuose. Pašalinimas iš failo nepašalina rakto iš Git istorijos.
+
+## Patikros
 
 ```bash
 npm run lint
@@ -67,12 +65,8 @@ npm test
 npm run build
 ```
 
-SQL testai naudoja atskirą, laikiną PostgreSQL (PGlite) bazę ir nekeičia Supabase duomenų. Jie tikrina rezervavimo, atšaukimo, administratoriaus teisių ir RLS taisykles. Jie nepatikrina Supabase Auth, Realtime infrastruktūros ar lygiagrečių užklausų tarp skirtingų duomenų bazės jungčių.
+SQL testai naudoja izoliuotą PGlite PostgreSQL bazę ir nekeičia Supabase duomenų. Jie tikrina RLS, administratoriaus teises, atskiras renginių rezervacijas, komandų vietų laikymą, eilės perkėlimą, QR žetonus ir rezultatų publikavimą. Auth testai tikrina el. pašto registraciją, saugius nukreipimus, seną prisijungimą ir slaptažodžio atkūrimo logiką.
 
-Esamam projektui Supabase SQL Editor paleiskite `supabase/migrations/20260913_reservation_security.sql`. Naujai bazei naudokite `supabase/schema.sql`. Migracija nekeičia esamų administratorių vaidmenų; patikrinkite, kad administratoriaus teises turi tik organizatoriai. Administratoriaus teisės suteikiamos tik rankiniu būdu, pagal anksčiau pateiktą SQL instrukciją.
+Šie testai nepatikrina realaus laiškų pristatymo, telefono kameros ar Supabase Realtime infrastruktūros. SQL funkcijų užraktai tikrinami per elgesio scenarijus, tačiau testai nenaudoja kelių lygiagrečių PostgreSQL jungčių.
 
-Registruojantis vardu naudojamas vidinis el. pašto identifikatorius. Supabase **Authentication → Providers → Email** turi būti išjungtas **Confirm email**, nes vartotojai nepateikia tikro el. pašto adreso. Jei reikalingas el. pašto patvirtinimas ar slaptažodžio atkūrimas, registraciją pirmiausia reikia išplėsti tikro el. pašto lauku. Senų paskyrų prisijungimas išlaikytas.
-
-`.env.local.example` turi būti tik pavyzdinės reikšmės. Šioje versijoje pašalintas jame buvęs `service_role` raktas. Jei jis buvo įkeltas į Git ar bendrintas, pakeiskite jį Supabase nustatymuose; ištrynimas iš naujos versijos nepašalina rakto iš Git istorijos. Šiai programai service role rakto nereikia.
-
-Vizualinės peržiūros rezultatai ir siūlomos funkcijos: `docs/review/review.md`.
+Ankstesnė vizualinė peržiūra: `docs/review/review.md`.

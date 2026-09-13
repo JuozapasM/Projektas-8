@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { AdminTable } from '@/components/AdminTable';
 
@@ -33,6 +34,7 @@ export default async function AdminPage() {
         </p>
       </div>
 
+      <div className="flex flex-wrap gap-3 mb-6"><Link className="primary-button" href="/admin/events">Renginių valdymas</Link><Link className="secondary-button" href="/admin/check-in">Atvykimo registracija</Link></div>
       <AdminTable users={usersWithSeats} />
     </div>
   );

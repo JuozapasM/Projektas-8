@@ -1,137 +1,28 @@
+import Link from 'next/link';
+import { CalendarDays, Users, Ticket, ArrowDown } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { getSupabaseEnv } from '@/lib/supabase/env';
-import { HallMap } from '@/components/HallMap';
-import { UserControls } from '@/components/UserControls';
-import { Sparkles, ArrowDown, Armchair, Users, LayoutGrid } from 'lucide-react';
-import { Seat } from '@/types/database';
-
-export const revalidate = 0;
+import { GameEvent } from '@/types/database';
+import { EventCard } from '@/components/EventCard';
 
 export default async function HomePage({ searchParams }: { searchParams: Promise<{ notice?: string }> }) {
   const { notice } = await searchParams;
-  let seats: Seat[] = [];
-  let currentUser: { id: string; username: string } | null = null;
-  let userSeat: Seat | null = null;
-  let hasDbConnection = false;
-  let dbError = false;
-
-  const { isConfigured: isEnvConfigured } = getSupabaseEnv();
-
-  try {
-    if (!isEnvConfigured) throw new Error("Supabase is not configured");
-    const supabase = await createClient();
-
-    // Fetch seats with username profile
-    const { data: seatsData, error: seatsError } = await supabase
-      .from('seats')
-      .select('*, profiles(username)')
-      .order('table_number', { ascending: true })
-      .order('seat_number', { ascending: true });
-
-    if (seatsData && !seatsError) {
-      seats = seatsData as Seat[];
-      hasDbConnection = seats.length === 24;
-    } else if (seatsError) {
-      console.error('Failed to fetch seats:', seatsError);
-      dbError = true;
-    }
-
-    // Get auth user
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (user) {
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('username')
-        .eq('id', user.id)
-        .maybeSingle();
-
-      if (profileError) {
-        console.error('Failed to fetch profile for user', user.id, profileError);
-      }
-
-      if (profile) {
-        currentUser = {
-          id: user.id,
-          username: profile.username,
-        };
-
-        userSeat = seats.find((s) => s.user_id === user.id) || null;
-      }
-    }
-  } catch (err) {
-    if (isEnvConfigured) console.error('Home page data fetch error:', err);
-    dbError = true;
+  let events: GameEvent[] = []; let available = false;
+  if (getSupabaseEnv().isConfigured) {
+    try {
+      const { data, error } = await (await createClient()).from('game_events').select('*').neq('status', 'draft').order('starts_at');
+      if (!error && data) { events = data as GameEvent[]; available = true; }
+    } catch { /* Show the unavailable state. */ }
   }
-
-  // Fallback: Generate 24 empty seats (6 tables x 4 seats) if DB returns 0 seats
-  if (seats.length === 0) {
-    for (let t = 1; t <= 6; t++) {
-      for (let s = 1; s <= 4; s++) {
-        seats.push({
-          id: `default-${t}-${s}`,
-          table_number: t,
-          seat_number: s,
-          user_id: null,
-          updated_at: new Date().toISOString(),
-          profiles: null,
-        });
-      }
-    }
-  }
-
-  const showConfigWarning = !hasDbConnection && !isEnvConfigured;
-  const showConnectionError = !hasDbConnection && isEnvConfigured && dbError;
-
-  return (
-    <div className="max-w-6xl mx-auto px-5 sm:px-8">
-      {(showConfigWarning || showConnectionError || !hasDbConnection) && (
-        <div role="status" className="mb-8 rounded-xl border border-amber-300/20 bg-amber-300/5 p-4 text-sm text-amber-100/80">
-          <strong className="text-amber-200">Salės peržiūros režimas.</strong>{' '}
-          Vietų užimtumo duomenys šiuo metu nepasiekiami. Rezervacijos bus galimos atkūrus ryšį.
-        </div>
-      )}
-
-      {notice === 'seat-unavailable' && <p role="status" className="mb-6 rounded-xl border border-amber-200/20 p-4 text-sm text-amber-200">Paskyra sukurta, tačiau vietos rezervuoti nepavyko. Pabandykite gauti vietą naudodami rezervacijos mygtuką.</p>}
-      <section className="grid lg:grid-cols-[1.2fr_1fr] items-center gap-8 lg:gap-16 mb-10">
-        <div>
-          <div className="inline-flex items-center gap-2 rounded-full border border-amber-200/15 bg-amber-200/5 px-3 py-1.5 text-[11px] font-semibold tracking-[.16em] uppercase text-amber-200 mb-5">
-            <Sparkles size={13} aria-hidden="true" /> Geros kompanijos. Geri klausimai.
-          </div>
-          <h1 className="text-4xl sm:text-5xl font-bold tracking-tight leading-[1.12] text-white">
-            Tavo vieta<br /><span className="text-amber-200">geram žaidimui.</span>
-          </h1>
-          <p className="mt-5 text-sm sm:text-base text-slate-400 leading-relaxed max-w-md">
-            Susitikime prie „Auksinio Proto“ stalo. Prisijunk, gauk savo vietą ir pasiruošk vakarui, kuriame laimi smalsumas.
-          </p>
-          <a href="#sale" className="mt-6 inline-flex items-center gap-2 text-sm text-slate-300 hover:text-amber-200 transition-colors">
-            Peržiūrėti žaidimo salę <ArrowDown size={15} aria-hidden="true" />
-          </a>
-        </div>
-        <UserControls user={currentUser} userSeat={userSeat} isAvailable={hasDbConnection} />
-      </section>
-
-      <div className="grid grid-cols-3 border-y border-slate-800/80 py-5 mb-9">
-        {[
-          { icon: LayoutGrid, value: '6', label: 'žaidimo stalai' },
-          { icon: Users, value: '4', label: 'žaidėjai prie stalo' },
-          { icon: Armchair, value: '24', label: 'vietos smalsiems' },
-        ].map(({ icon: Icon, value, label }) => (
-          <div key={label} className="flex items-center justify-center gap-3 sm:gap-4 border-r last:border-0 border-slate-800">
-            <Icon className="hidden sm:block text-slate-500" size={22} strokeWidth={1.5} aria-hidden="true" />
-            <div><span className="text-2xl font-semibold text-slate-100">{value}</span><p className="text-[10px] sm:text-xs text-slate-400 mt-0.5">{label}</p></div>
-          </div>
-        ))}
-      </div>
-      <HallMap initialSeats={seats} currentUserId={currentUser?.id} isAvailable={hasDbConnection} />
-      <section className="mt-10 rounded-2xl border border-slate-800/70 p-5 sm:p-6 flex flex-col sm:flex-row gap-5 justify-between text-sm">
-        <div><h2 className="font-semibold text-slate-200">Kaip tai veikia?</h2><p className="mt-1 text-slate-400">Trys žingsniai iki tavo vietos.</p></div>
-        <ol className="flex flex-wrap gap-x-7 gap-y-3 text-slate-400">
-          {['Sukurk paskyrą', 'Gauk atsitiktinę vietą', 'Prisijunk prie žaidimo'].map((step, i) => <li key={step} className="flex items-center gap-2"><span className="text-amber-200/70 font-mono text-xs">0{i + 1}</span>{step}</li>)}
-        </ol>
-      </section>
-    </div>
-  );
+  const upcoming = events.filter(e => e.status === 'open' && new Date(e.starts_at).getTime() > Date.now());
+  const previous = events.filter(e => e.status === 'completed').reverse();
+  return <div className="max-w-6xl mx-auto px-5 sm:px-8">
+    {notice === 'email-confirmed' && <p role="status" className="panel mb-6 text-sm text-emerald-200">El. paštas patvirtintas. Galite rezervuoti vietą renginyje.</p>}
+    <section className="grid lg:grid-cols-[1.25fr_1fr] gap-10 items-center mb-10"><div><p className="inline-flex gap-2 rounded-full border border-amber-200/20 px-3 py-2 text-xs text-amber-200 mb-5"><CalendarDays size={15} aria-hidden="true" />Susitikime kitame žaidime</p><h1 className="text-4xl sm:text-5xl font-bold tracking-tight leading-tight">Geri klausimai.<br /><span className="text-amber-200">Dar geresnė kompanija.</span></h1><p className="mt-5 text-slate-400 leading-relaxed max-w-lg">Pasirink „Auksinio Proto“ vakarą, rezervuok vietą sau ar savo komandai ir susitikime prie stalo.</p><a className="inline-flex gap-2 items-center mt-6 text-sm text-amber-200" href="#renginiai">Rasti savo žaidimą<ArrowDown size={16} aria-hidden="true" /></a></div><div className="panel space-y-5">{[{icon: CalendarDays,title:'Pasirink vakarą',text:'Aiški data, laikas ir susitikimo vieta.'},{icon: Users,title:'Ateik su komanda',text:'2–4 vietos prie vieno stalo ir pakvietimas draugams.'},{icon: Ticket,title:'Turėk bilietą po ranka',text:'Tavo rezervacija ir QR kodas atvykimo registracijai.'}].map(({icon:Icon,title,text}) => <div key={title} className="flex gap-4"><Icon size={21} className="text-amber-200 shrink-0 mt-1" aria-hidden="true" /><div><h2 className="font-semibold">{title}</h2><p className="text-sm text-slate-400 mt-1">{text}</p></div></div>)}</div></section>
+    <section id="renginiai" className="scroll-mt-28"><div className="flex items-end justify-between flex-wrap gap-3 mb-5"><div><p className="text-xs tracking-widest uppercase text-amber-200/70 mb-2">Kalendorius</p><h2 className="text-2xl font-semibold">Artimiausi žaidimai</h2></div><Link href="/results" className="text-sm text-slate-400 hover:text-amber-200">Ankstesnių žaidimų rezultatai →</Link></div>
+      {!available ? <div role="status" className="panel text-sm text-slate-400">Renginių kalendorius šiuo metu nepasiekiamas. <Link href="/hall" className="text-amber-200">Atidaryti esamą salę</Link>.</div> : !upcoming.length ? <div className="panel text-center py-10"><CalendarDays size={28} className="mx-auto text-slate-500 mb-3" aria-hidden="true" /><p className="text-slate-300">Artimiausi žaidimai dar nepaskelbti.</p><p className="text-sm text-slate-400 mt-2">Užsukite vėliau — organizatorius čia paskelbs kitą vakarą.</p></div> : <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">{upcoming.map(e => <EventCard key={e.id} event={e} />)}</div>}
+    </section>
+    {!!previous.length && <section className="mt-10"><h2 className="text-2xl font-semibold mb-5">Jau sužaidėme</h2><div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">{previous.slice(0,6).map(e => <EventCard key={e.id} event={e} />)}</div></section>}
+    <div className="mt-8 text-xs text-slate-400"><Link href="/hall" className="hover:text-amber-200">Esama salė ir ankstesnės rezervacijos</Link></div>
+  </div>;
 }

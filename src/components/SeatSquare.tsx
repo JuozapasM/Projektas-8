@@ -2,8 +2,8 @@ import { Armchair, UserRound } from 'lucide-react';
 import { Seat } from '@/types/database';
 
 export function SeatSquare({ seat, isCurrentUserSeat, isAvailable = true }: { seat: Seat; isCurrentUserSeat?: boolean; isAvailable?: boolean }) {
-  const occupied = !!seat.user_id;
-  const name = seat.profiles?.username || 'Užimta';
+  const occupied = !!seat.user_id || !!seat.team_id;
+  const name = seat.profiles?.username || (seat.team_id ? 'Komandai' : 'Užimta');
   const label = !isAvailable ? 'Nežinoma' : occupied ? name : 'Laisva';
   const Icon = occupied ? UserRound : Armchair;
   return (

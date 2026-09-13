@@ -54,7 +54,10 @@ export async function updateSession(request: NextRequest) {
     if (request.nextUrl.pathname.startsWith('/admin')) {
       if (!user) {
         const url = request.nextUrl.clone();
+        const next = url.pathname + url.search;
         url.pathname = '/auth/login';
+        url.search = '';
+        url.searchParams.set('next', next);
         return redirectWithCookies(url);
       }
 
