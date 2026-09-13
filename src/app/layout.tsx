@@ -3,6 +3,8 @@ import './globals.css';
 import { createClient } from '@/lib/supabase/server';
 import { Navbar } from '@/components/Navbar';
 
+export const dynamic = 'force-dynamic';
+
 export const metadata: Metadata = {
   title: 'Auksinis Protas - Žaidimo Stalų Rezervacija',
   description: 'Stalų ir vietų rezervavimo platforma Auksinis Protas žaidimui',

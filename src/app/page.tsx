@@ -11,7 +11,8 @@ export default async function HomePage() {
   let userSeat: Seat | null = null;
   const isSupabaseConfigured =
     Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL) &&
-    !process.env.NEXT_PUBLIC_SUPABASE_URL?.includes('your-supabase');
+    !process.env.NEXT_PUBLIC_SUPABASE_URL?.includes('your-supabase') &&
+    !process.env.NEXT_PUBLIC_SUPABASE_URL?.includes('placeholder');
 
   try {
     const supabase = await createClient();
