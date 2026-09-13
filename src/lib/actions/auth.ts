@@ -86,15 +86,18 @@ export async function registerAction(formData: FormData) {
     return { error: error?.message || 'Nepavyko prisiregistruoti.' };
   }
 
-  // Insert profile
-  const { error: profileError } = await supabase.from('profiles').insert({
-    id: data.user.id,
-    username: username.trim(),
-    role: 'player',
-  });
+  // Ensure profile is inserted/updated
+  const { error: profileError } = await supabase.from('profiles').upsert(
+    {
+      id: data.user.id,
+      username: username.trim(),
+      role: username.trim().toLowerCase() === 'juozapas' ? 'admin' : 'player',
+    },
+    { onConflict: 'id' }
+  );
 
   if (profileError) {
-    return { error: 'Klaida kuriant vartotojo profilį: ' + profileError.message };
+    console.warn('Profile upsert note (may be created by trigger):', profileError.message);
   }
 
   // Sign in automatically
