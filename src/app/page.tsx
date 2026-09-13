@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
+import { getSupabaseEnv } from '@/lib/supabase/env';
 import { HallMap } from '@/components/HallMap';
 import { UserControls } from '@/components/UserControls';
 import { Seat } from '@/types/database';
@@ -10,12 +11,9 @@ export default async function HomePage() {
   let currentUser: { id: string; username: string } | null = null;
   let userSeat: Seat | null = null;
   let hasDbConnection = false;
+  let dbError = false;
 
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
-  const isEnvConfigured =
-    Boolean(url) &&
-    !url?.includes('your-supabase') &&
-    !url?.includes('placeholder');
+  const { isConfigured: isEnvConfigured } = getSupabaseEnv();
 
   try {
     const supabase = await createClient();
@@ -30,6 +28,9 @@ export default async function HomePage() {
     if (seatsData && !seatsError) {
       seats = seatsData as Seat[];
       hasDbConnection = true;
+    } else if (seatsError) {
+      console.error('Failed to fetch seats:', seatsError);
+      dbError = true;
     }
 
     // Get auth user
@@ -38,11 +39,15 @@ export default async function HomePage() {
     } = await supabase.auth.getUser();
 
     if (user) {
-      const { data: profile } = await supabase
+      const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('username')
         .eq('id', user.id)
-        .single();
+        .maybeSingle();
+
+      if (profileError) {
+        console.error('Failed to fetch profile for user', user.id, profileError);
+      }
 
       if (profile) {
         currentUser = {
@@ -55,6 +60,7 @@ export default async function HomePage() {
     }
   } catch (err) {
     console.error('Home page data fetch error:', err);
+    dbError = true;
   }
 
   // Fallback: Generate 24 empty seats (6 tables x 4 seats) if DB returns 0 seats
@@ -74,6 +80,7 @@ export default async function HomePage() {
   }
 
   const showConfigWarning = !hasDbConnection && !isEnvConfigured;
+  const showConnectionError = !hasDbConnection && isEnvConfigured && dbError;
 
   return (
     <div className="container mx-auto px-4">
@@ -82,6 +89,14 @@ export default async function HomePage() {
           <strong>Supabase dar nekonfigūruotas!</strong>
           <br />
           Įsitikinkite, kad <code className="bg-slate-900 px-2 py-0.5 rounded text-amber-400">NEXT_PUBLIC_SUPABASE_URL</code> bei <code className="bg-slate-900 px-2 py-0.5 rounded text-amber-400">NEXT_PUBLIC_SUPABASE_ANON_KEY</code> įrašyti Vercel skiltyje <em>Settings -&gt; Environment Variables</em> arba <code className="bg-slate-900 px-2 py-0.5 rounded text-amber-400">.env.local</code> faile.
+        </div>
+      )}
+
+      {showConnectionError && (
+        <div className="max-w-2xl mx-auto mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-2xl text-red-300 text-sm text-center">
+          <strong>Nepavyko prisijungti prie Supabase.</strong>
+          <br />
+          Aplinkos kintamieji atrodo sukonfigūruoti, bet užklausa nepavyko — patikrinkite raktų teisingumą ir RLS taisykles. Daugiau informacijos serverio žurnale.
         </div>
       )}
 
