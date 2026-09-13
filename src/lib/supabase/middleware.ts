@@ -1,4 +1,4 @@
-import { createServerClient } from '@supabase/ssr';
+import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import { getSupabaseEnv } from './env';
 
@@ -10,8 +10,17 @@ export async function updateSession(request: NextRequest) {
   const { url, anonKey, isConfigured } = getSupabaseEnv();
 
   if (!isConfigured) {
+    if (request.nextUrl.pathname.startsWith('/admin')) {
+      return NextResponse.redirect(new URL('/auth/login', request.url));
+    }
     return supabaseResponse;
   }
+
+  const redirectWithCookies = (url: URL) => {
+    const response = NextResponse.redirect(url);
+    supabaseResponse.cookies.getAll().forEach(cookie => response.cookies.set(cookie));
+    return response;
+  };
 
   try {
     const supabase = createServerClient(
@@ -22,7 +31,7 @@ export async function updateSession(request: NextRequest) {
           getAll() {
             return request.cookies.getAll();
           },
-          setAll(cookiesToSet: { name: string; value: string; options?: any }[]) {
+          setAll(cookiesToSet: { name: string; value: string; options?: CookieOptions }[]) {
             cookiesToSet.forEach(({ name, value }) =>
               request.cookies.set(name, value)
             );
@@ -46,7 +55,7 @@ export async function updateSession(request: NextRequest) {
       if (!user) {
         const url = request.nextUrl.clone();
         url.pathname = '/auth/login';
-        return NextResponse.redirect(url);
+        return redirectWithCookies(url);
       }
 
       // Check if admin
@@ -59,11 +68,14 @@ export async function updateSession(request: NextRequest) {
       if (profile?.role !== 'admin') {
         const url = request.nextUrl.clone();
         url.pathname = '/';
-        return NextResponse.redirect(url);
+        return redirectWithCookies(url);
       }
     }
   } catch (err) {
     console.error('Middleware session update error:', err);
+    if (request.nextUrl.pathname.startsWith('/admin')) {
+      return redirectWithCookies(new URL('/auth/login', request.url));
+    }
   }
 
   return supabaseResponse;

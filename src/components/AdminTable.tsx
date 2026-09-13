@@ -20,13 +20,18 @@ interface AdminTableProps {
 
 export const AdminTable: React.FC<AdminTableProps> = ({ users }) => {
   const [isPending, startTransition] = useTransition();
+  const [message, setMessage] = useState<string | null>(null);
   const [search, setSearch] = useState('');
 
   const handleRemoveSeat = (userId: string) => {
     if (!confirm('Ar tikrai norite atlaisvinti šio dalyvio vietą?')) return;
 
     startTransition(async () => {
-      await adminRemoveSeatAction(userId);
+      setMessage(null);
+      try {
+        const result = await adminRemoveSeatAction(userId);
+        setMessage(result?.message || 'Nepavyko atlaisvinti vietos.');
+      } catch { setMessage('Nepavyko atlaisvinti vietos. Bandykite dar kartą.'); }
     });
   };
 
@@ -48,13 +53,14 @@ export const AdminTable: React.FC<AdminTableProps> = ({ users }) => {
           </p>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-4">
           <input
             type="text"
+            aria-label="Ieškoti dalyvio pagal vardą arba stalą"
             placeholder="Ieškoti pagal vardą ar stalą..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="px-4 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 w-60"
+            className="px-4 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 w-full sm:w-60"
           />
 
           <span className="px-3 py-1 bg-amber-500/10 text-amber-400 border border-amber-500/30 rounded-full text-xs font-semibold whitespace-nowrap">
@@ -63,6 +69,7 @@ export const AdminTable: React.FC<AdminTableProps> = ({ users }) => {
         </div>
       </div>
 
+      {message && <p role="status" className="px-6 py-4 text-sm text-amber-200">{message}</p>}
       <div className="overflow-x-auto">
         <table className="w-full text-left text-sm text-slate-300">
           <thead className="bg-slate-950 text-slate-400 uppercase text-xs tracking-wider">

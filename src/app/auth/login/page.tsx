@@ -32,19 +32,22 @@ export default function LoginPage() {
         </div>
 
         {error && (
-          <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-xs text-center font-medium">
+          <div role="alert" className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-xs text-center font-medium">
             {error}
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">
+            <label htmlFor="username" className="block text-xs font-semibold text-slate-300 mb-1">
               Vartotojo vardas
             </label>
             <input
               type="text"
               name="username"
+              id="username"
+              autoComplete="username"
+              maxLength={32}
               required
               placeholder="Jūsų Vardas"
               className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white placeholder-slate-600 focus:outline-none focus:border-amber-500 text-sm"
@@ -52,12 +55,14 @@ export default function LoginPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">
+            <label htmlFor="password" className="block text-xs font-semibold text-slate-300 mb-1">
               Slaptažodis
             </label>
             <input
               type="password"
               name="password"
+              id="password"
+              autoComplete="current-password"
               required
               placeholder="••••••••"
               className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white placeholder-slate-600 focus:outline-none focus:border-amber-500 text-sm"
@@ -67,7 +72,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={isPending}
-            className="w-full py-3 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl transition-all shadow-lg shadow-amber-500/20 disabled:opacity-50 text-sm mt-2"
+            className="w-full py-3 bg-amber-200 hover:bg-amber-100 text-slate-950 font-bold rounded-xl transition-all shadow-lg shadow-amber-500/20 disabled:opacity-50 text-sm mt-2"
           >
             {isPending ? 'Prisijungiama...' : 'Prisijungti'}
           </button>

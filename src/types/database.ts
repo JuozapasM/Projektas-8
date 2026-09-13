@@ -13,7 +13,7 @@ export interface Seat {
   seat_number: number;
   user_id: string | null;
   updated_at: string;
-  profiles?: Profile | null;
+  profiles?: Pick<Profile, 'username'> | null;
 }
 
 export interface SeatHistory {

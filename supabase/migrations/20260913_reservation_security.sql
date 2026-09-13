@@ -1,15 +1,6 @@
--- Enable UUID extension
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+-- Apply in Supabase SQL Editor to secure an existing installation.
+BEGIN;
 
--- 1. Profiles Table
-CREATE TABLE IF NOT EXISTS public.profiles (
-  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  username TEXT UNIQUE NOT NULL,
-  role TEXT NOT NULL DEFAULT 'player' CHECK (role IN ('player', 'admin')),
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
--- Trigger function to automatically create profile when user registers
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER
 LANGUAGE plpgsql
@@ -41,71 +32,12 @@ CREATE TRIGGER on_auth_user_created
 DROP TRIGGER IF EXISTS set_admin_role_trigger ON public.profiles;
 DROP FUNCTION IF EXISTS public.handle_admin_role();
 
--- 2. Seats Table (6 tables x 4 seats = 24 total)
-CREATE TABLE IF NOT EXISTS public.seats (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  table_number INT NOT NULL CHECK (table_number BETWEEN 1 AND 6),
-  seat_number INT NOT NULL CHECK (seat_number BETWEEN 1 AND 4),
-  user_id UUID UNIQUE REFERENCES public.profiles(id) ON DELETE SET NULL,
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  UNIQUE(table_number, seat_number)
-);
-
--- 3. Seat History Table (Audit Log)
-CREATE TABLE IF NOT EXISTS public.seat_history (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
-  username TEXT NOT NULL,
-  table_number INT NOT NULL,
-  seat_number INT NOT NULL,
-  action TEXT NOT NULL CHECK (action IN ('RESERVED', 'CANCELLED', 'ADMIN_REMOVED')),
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
--- Insert 24 seats if they do not exist
-DO $$
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM public.seats) THEN
-    INSERT INTO public.seats (table_number, seat_number)
-    SELECT t, s
-    FROM generate_series(1, 6) AS t
-    CROSS JOIN generate_series(1, 4) AS s;
-  END IF;
-END $$;
-
--- Enable Supabase Realtime for seats if not already added
-DO $$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_publication_tables 
-    WHERE pubname = 'supabase_realtime' 
-      AND schemaname = 'public' 
-      AND tablename = 'seats'
-  ) THEN
-    ALTER PUBLICATION supabase_realtime ADD TABLE public.seats;
-  END IF;
-END $$;
-
--- RLS Policies
-ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.seats ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.seat_history ENABLE ROW LEVEL SECURITY;
-
--- Profiles: Anyone can view usernames, users can insert their own profile
-DROP POLICY IF EXISTS "Public profiles are viewable by everyone" ON public.profiles;
-CREATE POLICY "Public profiles are viewable by everyone" ON public.profiles
-  FOR SELECT USING (true);
 
 DROP POLICY IF EXISTS "Users can insert their own profile" ON public.profiles;
 CREATE POLICY "Users can insert their own profile" ON public.profiles
   FOR INSERT WITH CHECK (auth.uid() = id AND role = 'player');
 
--- Seats: Viewable by everyone, update restricted or via security definer RPC
-DROP POLICY IF EXISTS "Seats are viewable by everyone" ON public.seats;
-CREATE POLICY "Seats are viewable by everyone" ON public.seats
-  FOR SELECT USING (true);
 
--- Seat History: Viewable by admins, insertable by functions
 DROP POLICY IF EXISTS "Seat history viewable by everyone logged in" ON public.seat_history;
 CREATE POLICY "Seat history viewable by everyone logged in" ON public.seat_history
   FOR SELECT TO authenticated USING (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin'));
@@ -259,3 +191,5 @@ REVOKE EXECUTE ON FUNCTION public.admin_remove_seat(UUID) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.assign_random_seat(UUID) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.cancel_seat_reservation(UUID) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.admin_remove_seat(UUID) TO authenticated;
+
+COMMIT;

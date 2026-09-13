@@ -18,7 +18,7 @@ export async function reserveSeatAction() {
   });
 
   if (error) {
-    return { success: false, message: error.message };
+    return { success: false, message: 'Nepavyko atlikti rezervacijos veiksmo. Bandykite dar kartą.' };
   }
 
   revalidatePath('/');
@@ -40,7 +40,7 @@ export async function cancelSeatAction() {
   });
 
   if (error) {
-    return { success: false, message: error.message };
+    return { success: false, message: 'Nepavyko atlikti rezervacijos veiksmo. Bandykite dar kartą.' };
   }
 
   revalidatePath('/');
@@ -73,9 +73,10 @@ export async function adminRemoveSeatAction(targetUserId: string) {
   });
 
   if (error) {
-    return { success: false, message: error.message };
+    return { success: false, message: 'Nepavyko atlikti rezervacijos veiksmo. Bandykite dar kartą.' };
   }
 
+  revalidatePath('/admin/history');
   revalidatePath('/admin');
   revalidatePath('/');
   return data;

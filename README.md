@@ -57,3 +57,22 @@ Atidarykite naršyklėje [http://localhost:3000](http://localhost:3000).
 2. Prisijunkite prie [Vercel](https://vercel.com) ir importuokite šią GitHub repozitoriją.
 3. Vercel projekto nustatymuose įtraukite `NEXT_PUBLIC_SUPABASE_URL` ir `NEXT_PUBLIC_SUPABASE_ANON_KEY` aplinkos kintamuosius.
 4. Spustelėkite **Deploy**.
+
+## Patikros ir saugumo atnaujinimas
+
+```bash
+npm run lint
+npm run typecheck
+npm test
+npm run build
+```
+
+SQL testai naudoja atskirą, laikiną PostgreSQL (PGlite) bazę ir nekeičia Supabase duomenų. Jie tikrina rezervavimo, atšaukimo, administratoriaus teisių ir RLS taisykles. Jie nepatikrina Supabase Auth, Realtime infrastruktūros ar lygiagrečių užklausų tarp skirtingų duomenų bazės jungčių.
+
+Esamam projektui Supabase SQL Editor paleiskite `supabase/migrations/20260913_reservation_security.sql`. Naujai bazei naudokite `supabase/schema.sql`. Migracija nekeičia esamų administratorių vaidmenų; patikrinkite, kad administratoriaus teises turi tik organizatoriai. Administratoriaus teisės suteikiamos tik rankiniu būdu, pagal anksčiau pateiktą SQL instrukciją.
+
+Registruojantis vardu naudojamas vidinis el. pašto identifikatorius. Supabase **Authentication → Providers → Email** turi būti išjungtas **Confirm email**, nes vartotojai nepateikia tikro el. pašto adreso. Jei reikalingas el. pašto patvirtinimas ar slaptažodžio atkūrimas, registraciją pirmiausia reikia išplėsti tikro el. pašto lauku. Senų paskyrų prisijungimas išlaikytas.
+
+`.env.local.example` turi būti tik pavyzdinės reikšmės. Šioje versijoje pašalintas jame buvęs `service_role` raktas. Jei jis buvo įkeltas į Git ar bendrintas, pakeiskite jį Supabase nustatymuose; ištrynimas iš naujos versijos nepašalina rakto iš Git istorijos. Šiai programai service role rakto nereikia.
+
+Vizualinės peržiūros rezultatai ir siūlomos funkcijos: `docs/review/review.md`.

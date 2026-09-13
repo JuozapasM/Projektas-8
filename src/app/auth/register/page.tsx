@@ -32,19 +32,22 @@ export default function RegisterPage() {
         </div>
 
         {error && (
-          <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-xs text-center font-medium">
+          <div role="alert" className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-xs text-center font-medium">
             {error}
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">
+            <label htmlFor="username" className="block text-xs font-semibold text-slate-300 mb-1">
               Jūsų vardas
             </label>
             <input
               type="text"
               name="username"
+              id="username"
+              autoComplete="username"
+              maxLength={32}
               required
               minLength={2}
               placeholder="Vardas"
@@ -53,12 +56,14 @@ export default function RegisterPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">
+            <label htmlFor="password" className="block text-xs font-semibold text-slate-300 mb-1">
               Slaptažodis (bent 6 simboliai)
             </label>
             <input
               type="password"
               name="password"
+              id="password"
+              autoComplete="new-password"
               required
               minLength={6}
               placeholder="••••••••"
@@ -69,7 +74,7 @@ export default function RegisterPage() {
           <button
             type="submit"
             disabled={isPending}
-            className="w-full py-3 bg-emerald-500 hover:bg-emerald-400 text-emerald-950 font-bold rounded-xl transition-all shadow-lg shadow-emerald-500/20 disabled:opacity-50 text-sm mt-2"
+            className="w-full py-3 bg-amber-200 hover:bg-amber-100 text-emerald-950 font-bold rounded-xl transition-all shadow-lg shadow-emerald-500/20 disabled:opacity-50 text-sm mt-2"
           >
             {isPending ? 'Registruojama...' : 'Registruotis ir gauti vietą'}
           </button>

@@ -2,11 +2,13 @@ import { createClient } from '@/lib/supabase/server';
 import { getSupabaseEnv } from '@/lib/supabase/env';
 import { HallMap } from '@/components/HallMap';
 import { UserControls } from '@/components/UserControls';
+import { Sparkles, ArrowDown, Armchair, Users, LayoutGrid } from 'lucide-react';
 import { Seat } from '@/types/database';
 
 export const revalidate = 0;
 
-export default async function HomePage() {
+export default async function HomePage({ searchParams }: { searchParams: Promise<{ notice?: string }> }) {
+  const { notice } = await searchParams;
   let seats: Seat[] = [];
   let currentUser: { id: string; username: string } | null = null;
   let userSeat: Seat | null = null;
@@ -16,6 +18,7 @@ export default async function HomePage() {
   const { isConfigured: isEnvConfigured } = getSupabaseEnv();
 
   try {
+    if (!isEnvConfigured) throw new Error("Supabase is not configured");
     const supabase = await createClient();
 
     // Fetch seats with username profile
@@ -27,7 +30,7 @@ export default async function HomePage() {
 
     if (seatsData && !seatsError) {
       seats = seatsData as Seat[];
-      hasDbConnection = true;
+      hasDbConnection = seats.length === 24;
     } else if (seatsError) {
       console.error('Failed to fetch seats:', seatsError);
       dbError = true;
@@ -59,7 +62,7 @@ export default async function HomePage() {
       }
     }
   } catch (err) {
-    console.error('Home page data fetch error:', err);
+    if (isEnvConfigured) console.error('Home page data fetch error:', err);
     dbError = true;
   }
 
@@ -83,35 +86,52 @@ export default async function HomePage() {
   const showConnectionError = !hasDbConnection && isEnvConfigured && dbError;
 
   return (
-    <div className="container mx-auto px-4">
-      {showConfigWarning && (
-        <div className="max-w-2xl mx-auto mb-6 p-4 bg-amber-500/10 border border-amber-500/30 rounded-2xl text-amber-300 text-sm text-center">
-          <strong>Supabase dar nekonfigūruotas!</strong>
-          <br />
-          Įsitikinkite, kad <code className="bg-slate-900 px-2 py-0.5 rounded text-amber-400">NEXT_PUBLIC_SUPABASE_URL</code> bei <code className="bg-slate-900 px-2 py-0.5 rounded text-amber-400">NEXT_PUBLIC_SUPABASE_ANON_KEY</code> įrašyti Vercel skiltyje <em>Settings -&gt; Environment Variables</em> arba <code className="bg-slate-900 px-2 py-0.5 rounded text-amber-400">.env.local</code> faile.
+    <div className="max-w-6xl mx-auto px-5 sm:px-8">
+      {(showConfigWarning || showConnectionError || !hasDbConnection) && (
+        <div role="status" className="mb-8 rounded-xl border border-amber-300/20 bg-amber-300/5 p-4 text-sm text-amber-100/80">
+          <strong className="text-amber-200">Salės peržiūros režimas.</strong>{' '}
+          Vietų užimtumo duomenys šiuo metu nepasiekiami. Rezervacijos bus galimos atkūrus ryšį.
         </div>
       )}
 
-      {showConnectionError && (
-        <div className="max-w-2xl mx-auto mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-2xl text-red-300 text-sm text-center">
-          <strong>Nepavyko prisijungti prie Supabase.</strong>
-          <br />
-          Aplinkos kintamieji atrodo sukonfigūruoti, bet užklausa nepavyko — patikrinkite raktų teisingumą ir RLS taisykles. Daugiau informacijos serverio žurnale.
+      {notice === 'seat-unavailable' && <p role="status" className="mb-6 rounded-xl border border-amber-200/20 p-4 text-sm text-amber-200">Paskyra sukurta, tačiau vietos rezervuoti nepavyko. Pabandykite gauti vietą naudodami rezervacijos mygtuką.</p>}
+      <section className="grid lg:grid-cols-[1.2fr_1fr] items-center gap-8 lg:gap-16 mb-10">
+        <div>
+          <div className="inline-flex items-center gap-2 rounded-full border border-amber-200/15 bg-amber-200/5 px-3 py-1.5 text-[11px] font-semibold tracking-[.16em] uppercase text-amber-200 mb-5">
+            <Sparkles size={13} aria-hidden="true" /> Geros kompanijos. Geri klausimai.
+          </div>
+          <h1 className="text-4xl sm:text-5xl font-bold tracking-tight leading-[1.12] text-white">
+            Tavo vieta<br /><span className="text-amber-200">geram žaidimui.</span>
+          </h1>
+          <p className="mt-5 text-sm sm:text-base text-slate-400 leading-relaxed max-w-md">
+            Susitikime prie „Auksinio Proto“ stalo. Prisijunk, gauk savo vietą ir pasiruošk vakarui, kuriame laimi smalsumas.
+          </p>
+          <a href="#sale" className="mt-6 inline-flex items-center gap-2 text-sm text-slate-300 hover:text-amber-200 transition-colors">
+            Peržiūrėti žaidimo salę <ArrowDown size={15} aria-hidden="true" />
+          </a>
         </div>
-      )}
+        <UserControls user={currentUser} userSeat={userSeat} isAvailable={hasDbConnection} />
+      </section>
 
-      <div className="text-center max-w-2xl mx-auto mb-6">
-        <h1 className="text-3xl sm:text-4xl font-black text-white tracking-tight mb-2">
-          Žaidimo Salė & Stalų Rezervacija
-        </h1>
-        <p className="text-slate-400 text-sm sm:text-base">
-          Šeši numeruoti stalai po 4 vietas. Užimtos vietos matomos su žaidėjo vardu, laisvos vietos – tušti žali kvadratai.
-        </p>
+      <div className="grid grid-cols-3 border-y border-slate-800/80 py-5 mb-9">
+        {[
+          { icon: LayoutGrid, value: '6', label: 'žaidimo stalai' },
+          { icon: Users, value: '4', label: 'žaidėjai prie stalo' },
+          { icon: Armchair, value: '24', label: 'vietos smalsiems' },
+        ].map(({ icon: Icon, value, label }) => (
+          <div key={label} className="flex items-center justify-center gap-3 sm:gap-4 border-r last:border-0 border-slate-800">
+            <Icon className="hidden sm:block text-slate-500" size={22} strokeWidth={1.5} aria-hidden="true" />
+            <div><span className="text-2xl font-semibold text-slate-100">{value}</span><p className="text-[10px] sm:text-xs text-slate-400 mt-0.5">{label}</p></div>
+          </div>
+        ))}
       </div>
-
-      <UserControls user={currentUser} userSeat={userSeat} />
-
-      <HallMap initialSeats={seats} currentUserId={currentUser?.id} />
+      <HallMap initialSeats={seats} currentUserId={currentUser?.id} isAvailable={hasDbConnection} />
+      <section className="mt-10 rounded-2xl border border-slate-800/70 p-5 sm:p-6 flex flex-col sm:flex-row gap-5 justify-between text-sm">
+        <div><h2 className="font-semibold text-slate-200">Kaip tai veikia?</h2><p className="mt-1 text-slate-400">Trys žingsniai iki tavo vietos.</p></div>
+        <ol className="flex flex-wrap gap-x-7 gap-y-3 text-slate-400">
+          {['Sukurk paskyrą', 'Gauk atsitiktinę vietą', 'Prisijunk prie žaidimo'].map((step, i) => <li key={step} className="flex items-center gap-2"><span className="text-amber-200/70 font-mono text-xs">0{i + 1}</span>{step}</li>)}
+        </ol>
+      </section>
     </div>
   );
 }

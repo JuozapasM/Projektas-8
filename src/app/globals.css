@@ -3,13 +3,25 @@
 @tailwind utilities;
 
 :root {
-  --background: #090d16;
+  --background: #0b1019;
   --foreground: #f8fafc;
 }
 
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: 'Avenir Next', 'Segoe UI', Arial, sans-serif;
   min-height: 100vh;
+}
+
+body {
+  background-image: radial-gradient(ellipse at 15% 0%, rgba(212, 170, 85, .07), transparent 45%);
+}
+
+::selection { background: #d5ad5b; color: #0b1019; }
+:focus-visible { outline: 2px solid #e8bc69; outline-offset: 4px; }
+button, a, input { -webkit-tap-highlight-color: transparent; }
+button:disabled { cursor: not-allowed; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 }
