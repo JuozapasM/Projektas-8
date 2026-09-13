@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { Seat } from '@/types/database';
 import { TableCard } from './TableCard';
 import { createClient } from '@/lib/supabase/client';
@@ -12,7 +12,7 @@ interface HallMapProps {
 
 export const HallMap: React.FC<HallMapProps> = ({ initialSeats, currentUserId }) => {
   const [seats, setSeats] = useState<Seat[]>(initialSeats);
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
   const fetchSeats = async () => {
     const { data } = await supabase
@@ -44,7 +44,7 @@ export const HallMap: React.FC<HallMapProps> = ({ initialSeats, currentUserId })
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [initialSeats]);
+  }, [initialSeats, supabase]);
 
   // Group seats by table_number (1..6)
   const tables = [1, 2, 3, 4, 5, 6].map((tableNum) => ({
