@@ -9,9 +9,10 @@ export default async function HomePage() {
   let seats: Seat[] = [];
   let currentUser: { id: string; username: string } | null = null;
   let userSeat: Seat | null = null;
+  let hasDbConnection = false;
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
-  const isSupabaseConfigured =
+  const isEnvConfigured =
     Boolean(url) &&
     !url?.includes('your-supabase') &&
     !url?.includes('placeholder');
@@ -20,14 +21,15 @@ export default async function HomePage() {
     const supabase = await createClient();
 
     // Fetch seats with username profile
-    const { data: seatsData } = await supabase
+    const { data: seatsData, error: seatsError } = await supabase
       .from('seats')
       .select('*, profiles(username)')
       .order('table_number', { ascending: true })
       .order('seat_number', { ascending: true });
 
-    if (seatsData && seatsData.length > 0) {
+    if (seatsData && !seatsError) {
       seats = seatsData as Seat[];
+      hasDbConnection = true;
     }
 
     // Get auth user
@@ -71,13 +73,15 @@ export default async function HomePage() {
     }
   }
 
+  const showConfigWarning = !hasDbConnection && !isEnvConfigured;
+
   return (
     <div className="container mx-auto px-4">
-      {!isSupabaseConfigured && (
+      {showConfigWarning && (
         <div className="max-w-2xl mx-auto mb-6 p-4 bg-amber-500/10 border border-amber-500/30 rounded-2xl text-amber-300 text-sm text-center">
           <strong>Supabase dar nekonfigūruotas!</strong>
           <br />
-          Sukurkite <code className="bg-slate-900 px-2 py-0.5 rounded text-amber-400">.env.local</code> failą ir įrašykite savo <code className="bg-slate-900 px-2 py-0.5 rounded text-amber-400">NEXT_PUBLIC_SUPABASE_URL</code> bei <code className="bg-slate-900 px-2 py-0.5 rounded text-amber-400">NEXT_PUBLIC_SUPABASE_ANON_KEY</code>.
+          Įsitikinkite, kad <code className="bg-slate-900 px-2 py-0.5 rounded text-amber-400">NEXT_PUBLIC_SUPABASE_URL</code> bei <code className="bg-slate-900 px-2 py-0.5 rounded text-amber-400">NEXT_PUBLIC_SUPABASE_ANON_KEY</code> įrašyti Vercel skiltyje <em>Settings -&gt; Environment Variables</em> arba <code className="bg-slate-900 px-2 py-0.5 rounded text-amber-400">.env.local</code> faile.
         </div>
       )}
 
