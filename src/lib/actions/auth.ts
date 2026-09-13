@@ -106,6 +106,13 @@ export async function registerAction(formData: FormData) {
     password,
   });
 
+  // Automatically assign a random seat upon registration
+  try {
+    await supabase.rpc('assign_random_seat', { p_user_id: data.user.id });
+  } catch (err) {
+    console.warn('Auto seat assignment note:', err);
+  }
+
   redirect('/');
 }
 
