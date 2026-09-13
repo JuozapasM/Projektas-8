@@ -1,0 +1,87 @@
+'use client';
+
+import React, { useState, useTransition } from 'react';
+import Link from 'next/link';
+import { registerAction } from '@/lib/actions/auth';
+
+export default function RegisterPage() {
+  const [isPending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setError(null);
+    const formData = new FormData(e.currentTarget);
+
+    startTransition(async () => {
+      const res = await registerAction(formData);
+      if (res?.error) {
+        setError(res.error);
+      }
+    });
+  };
+
+  return (
+    <div className="max-w-md mx-auto my-12 px-4">
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 shadow-2xl backdrop-blur">
+        <div className="text-center mb-6">
+          <h1 className="text-2xl font-black text-white">Nauja Registracija</h1>
+          <p className="text-xs text-slate-400 mt-1">
+            Sukurkite savo paskyrą su vardu ir slaptažodžiu
+          </p>
+        </div>
+
+        {error && (
+          <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-xs text-center font-medium">
+            {error}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-xs font-semibold text-slate-300 mb-1">
+              Jūsų vardas
+            </label>
+            <input
+              type="text"
+              name="username"
+              required
+              minLength={2}
+              placeholder="Vardas"
+              className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white placeholder-slate-600 focus:outline-none focus:border-amber-500 text-sm"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-300 mb-1">
+              Slaptažodis (bent 6 simboliai)
+            </label>
+            <input
+              type="password"
+              name="password"
+              required
+              minLength={6}
+              placeholder="••••••••"
+              className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white placeholder-slate-600 focus:outline-none focus:border-amber-500 text-sm"
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={isPending}
+            className="w-full py-3 bg-emerald-500 hover:bg-emerald-400 text-emerald-950 font-bold rounded-xl transition-all shadow-lg shadow-emerald-500/20 disabled:opacity-50 text-sm mt-2"
+          >
+            {isPending ? 'Registruojama...' : 'Registruotis ir gauti vietą'}
+          </button>
+        </form>
+
+        <div className="mt-6 pt-4 border-t border-slate-800 text-center text-xs text-slate-400">
+          Jau turite paskyrą?{' '}
+          <Link href="/auth/login" className="text-amber-400 hover:underline font-semibold">
+            Prisijungti
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
