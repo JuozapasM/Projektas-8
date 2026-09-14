@@ -71,6 +71,20 @@ test('new email login authenticates directly and requires a profile', async () =
   let email; const client = {auth:{signInWithPassword:async args => { email=args.email;return {data:{user:{id:'player'}},error:null}; }},from:() => ({select:() => ({eq:() => ({maybeSingle:async () => ({data:{username:'Jonas'}})})})})};
   await assert.rejects(loadAuth(client).loginAction(form('PLAYER@test.invalid')),/redirect:\/$/); assert.equal(email,'player@test.invalid');
 });
+test('username login still succeeds when the profile row is missing but auth metadata matches', async () => {
+  const client = {
+    auth: { signInWithPassword: async () => ({ data: { user: { id: 'player', email: 'player@test.invalid', user_metadata: { username: 'Jonas' } } }, error: null }) },
+    from: () => ({
+      select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: null, error: null }) }) }),
+      upsert: async payload => {
+        assert.equal(payload.id, 'player');
+        assert.equal(payload.username, 'Jonas');
+        return { error: null };
+      },
+    }),
+  };
+  await assert.rejects(loadAuth(client).loginAction(form('Jonas')), /redirect:/);
+});
 test('reset requests do not disclose whether an email belongs to an account', async () => {
   let request; const client = {auth:{resetPasswordForEmail:async (email,options) => {request={email,options};return {error:null};}}};
   const f=form('Jonas'); const result=await loadAuth(client).requestPasswordResetAction(f);

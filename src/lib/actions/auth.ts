@@ -27,7 +27,31 @@ export async function loginAction(formData: FormData): Promise<AuthResult> {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (!error && data.user) {
         const { data: profile } = await supabase.from('profiles').select('username').eq('id', data.user.id).maybeSingle();
-        if (profile && (emailLogin || normalizeUsername(profile.username) === normalizeUsername(identifier))) { signedIn = true; break; }
+        const authUsername = typeof data.user.user_metadata?.username === 'string' ? data.user.user_metadata.username.trim() : '';
+        const profileUsername = profile?.username || authUsername;
+        const matchedLegacyName = !emailLogin && !!profileUsername && normalizeUsername(profileUsername) === normalizeUsername(identifier);
+        const matchedEmail = emailLogin && data.user.email?.toLowerCase() === identifier.toLowerCase();
+        const hasMatchingIdentity = matchedEmail || matchedLegacyName;
+
+        if (profile && (emailLogin || normalizeUsername(profile.username) === normalizeUsername(identifier))) {
+          signedIn = true;
+          break;
+        }
+
+        if (!profile && hasMatchingIdentity) {
+          const usernameToPersist = profileUsername || identifier.trim();
+          const { error: upsertError } = await supabase.from('profiles').upsert({ id: data.user.id, username: usernameToPersist, role: 'player' }, { onConflict: 'id' });
+          if (!upsertError) {
+            signedIn = true;
+            break;
+          }
+        }
+
+        if (hasMatchingIdentity) {
+          signedIn = true;
+          break;
+        }
+
         await supabase.auth.signOut({ scope: 'local' });
       }
     }
